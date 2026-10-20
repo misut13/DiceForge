@@ -5,6 +5,7 @@
     --wood-dark: #1e140c;
     --wood: #4a3420;
     --gold: #d69e2e;
+    --header-text: #e8dcc5;
     --danger: #c53030;
 }
 
@@ -115,6 +116,18 @@ select:focus-visible {
     filter: brightness(0.95);
 }
 
+/* border-radius does not round border-image frames, clip-path does.
+   It also clips outlines, so the focus ring of framed elements sits inside. */
+.frame-card,
+.btn {
+    clip-path: inset(0 round 8px);
+}
+
+.frame-card:focus-visible,
+.btn:focus-visible {
+    outline-offset: -5px;
+}
+
 /* ---------- Header ---------- */
 
 .header {
@@ -123,7 +136,7 @@ select:focus-visible {
     flex-shrink: 0;
     height: 83px;
     padding: 0 70px;
-    color: white;
+    color: var(--header-text);
     text-align: center;
     display: flex;
     flex-direction: column;
@@ -151,10 +164,6 @@ select:focus-visible {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-}
-
-.header--profile h1 {
-    transform: translateY(0.5ch);
 }
 
 @media (max-width: 699px) {
@@ -485,6 +494,7 @@ dialog::backdrop {
 
 .result-content {
     width: min(85vw, 320px);
+    clip-path: inset(0 round 12px);
     border: 40px solid transparent;
     border-image: url('img/frame-popup.webp') 90 fill stretch;
     text-align: center;

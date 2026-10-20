@@ -509,6 +509,22 @@ test.describe('Einstellungen', () => {
 
 // ---------- Navigation ----------
 
+test.describe('Layout', () => {
+    // Vertical offset between the title's center and the header banner's center
+    const titleOffset = page => page.evaluate(() => {
+        const header = document.getElementById('header').getBoundingClientRect();
+        const title = document.getElementById('headerTitle').getBoundingClientRect();
+        return Math.abs((title.top + title.height / 2) - (header.top + header.height / 2));
+    });
+
+    test('Titel sitzt vertikal mittig im Header (Start und Profil)', async ({ page }) => {
+        await open(page, { profiles: [gandalf()] });
+        expect(await titleOffset(page)).toBeLessThanOrEqual(2);
+        await openProfile(page);
+        expect(await titleOffset(page)).toBeLessThanOrEqual(2);
+    });
+});
+
 test('Browser zurück/vor durch Bildschirme', async ({ page }) => {
     await open(page, { profiles: [gandalf()] });
     await openProfile(page);
