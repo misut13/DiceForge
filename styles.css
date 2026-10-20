@@ -122,7 +122,7 @@ select:focus-visible {
     isolation: isolate;
     flex-shrink: 0;
     height: 83px;
-    padding: 0 64px;
+    padding: 0 70px;
     color: white;
     text-align: center;
     display: flex;
@@ -137,13 +137,13 @@ select:focus-visible {
     inset: 0;
     z-index: -1;
     border: solid transparent;
-    border-width: 13px 48px;
-    border-image: url('img/header.webp') 30 115 fill stretch;
+    border-width: 10px 61px;
+    border-image: url('img/header.webp') 22 130 fill stretch;
 }
 
 .header--profile::before {
-    border-width: 9px 51px 9px 58px;
-    border-image: url('img/header-profile.webp') 26 150 26 168 fill stretch;
+    border-width: 10px 59px 10px 67px;
+    border-image: url('img/header-profile.webp') 24 140 24 160 fill stretch;
 }
 
 .header h1 {
@@ -177,7 +177,7 @@ select:focus-visible {
 .header-btn {
     position: absolute;
     top: 0;
-    width: 64px;
+    width: 68px;
     height: 100%;
 }
 
