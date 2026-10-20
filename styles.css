@@ -382,12 +382,51 @@ select:focus-visible {
     outline-offset: -4px;
 }
 
+.profile-content[data-mode='move'] [data-list] {
+    outline: 2px dashed rgba(47, 125, 50, 0.8);
+    outline-offset: -4px;
+}
+
+.profile-content [data-list].selected {
+    outline: 3px solid var(--gold);
+    outline-offset: -5px;
+    filter: brightness(1.12);
+}
+
 .profile-content[data-mode='edit'] [data-list] {
     outline: 2px dashed rgba(43, 108, 176, 0.8);
     outline-offset: -4px;
 }
 
 /* ---------- Forms ---------- */
+
+.quick-roll {
+    display: flex;
+    gap: 8px;
+    max-width: 480px;
+    margin: 0 auto 16px;
+}
+
+.quick-roll input {
+    flex: 1;
+    min-width: 0;
+    padding: 0 12px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 17px;
+}
+
+.quick-roll input:focus {
+    outline: none;
+    border-color: var(--gold);
+}
+
+.quick-roll .btn {
+    width: auto;
+    margin: 0;
+    padding: 0 16px;
+}
 
 .input-group {
     display: block;
@@ -485,11 +524,24 @@ dialog::backdrop {
 }
 
 .settings-panel {
-    width: min(90vw, 300px);
-    padding: 30px;
+    width: min(92vw, 340px);
+    max-height: 90dvh;
+    overflow-y: auto;
+    padding: 20px;
     border-radius: 12px;
     background: var(--parchment);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* Nine entries must fit on a small phone without scrolling */
+.settings-panel .btn {
+    height: 50px;
+    margin-bottom: 8px;
+    font-size: 15px;
+}
+
+.settings-panel .btn-small {
+    height: 44px;
 }
 
 .result-content {

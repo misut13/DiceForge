@@ -13,6 +13,13 @@ verfügbar ist. Man kann Profile für seine Spielecharakter erstellen und diesen
 
 Eine natürliche 20 oder 1 auf einem W20 wird im Ergebnis hervorgehoben.
 
+## Bedienung
+
+Im Profil würfelt ein Tipp auf eine Karte. Oben lässt sich eine Formel frei würfeln, ohne sie zu speichern.
+Über das Zahnrad: Funktionen und Würfel hinzufügen, bearbeiten, verschieben (Element antippen, dann
+Zielposition) oder löschen, das Profil umbenennen sowie Animation und Sound ein- und ausschalten.
+Solange die App offen ist, bleibt der Bildschirm an.
+
 ## Daten
 
 Profile liegen nur im Browser (localStorage). Über "Exportieren" auf der Startseite lässt sich eine

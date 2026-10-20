@@ -118,3 +118,10 @@ export function mergeProfiles(existing, imported) {
     }
     return merged;
 }
+
+// Moves one entry to another position. Changes the list in place, so references held
+// elsewhere (for example by a pending undo) stay valid.
+export function moveItem(list, from, to) {
+    list.splice(to, 0, ...list.splice(from, 1));
+    return list;
+}

@@ -1,4 +1,4 @@
-﻿import { parseFormula, rollFormula, normalizeProfiles, mergeProfiles } from './model.js';
+﻿import { parseFormula, rollFormula, normalizeProfiles, mergeProfiles, moveItem } from './model.js';
 
 const STANDARD_DICE = [3, 4, 6, 8, 10, 12, 20, 100];
 const SOUNDS = {
@@ -18,8 +18,9 @@ const FORMS = {
 const $ = id => document.getElementById(id);
 
 let profiles = [];
-let settings = { animationEnabled: true };
-let mode = null; // null | 'edit' | 'delete'
+let settings = { animationEnabled: true, soundEnabled: true };
+let mode = null; // null | 'edit' | 'move' | 'delete'
+let moveSource = null; // { list, index } picked first in move mode
 let lastRoll = null;
 let animationBlob = null;
 let animationUrl = null;
@@ -56,6 +57,7 @@ function saveSettings() {
 // Every screen and the result popup are history entries, so the browser and
 // Android back button behave like the in-app back button.
 // State: { view: 'list' | 'create' | 'profile' | 'form', profileId, form, index, result, depth }
+// 'create' with a profileId renames that profile.
 
 function navigate(state, replace = false) {
     const next = { ...state, depth: (history.state?.depth ?? 0) + (replace ? 0 : 1) };
@@ -81,7 +83,7 @@ function currentProfile() {
 
 function render(state) {
     const profile = profiles.find(p => p.id === state.profileId);
-    if (!profile && state.view !== 'list' && state.view !== 'create') {
+    if (state.profileId ? !profile : state.view === 'profile' || state.view === 'form') {
         navigate({ view: 'list' }, true);
         return;
     }
@@ -91,8 +93,7 @@ function render(state) {
 
     switch (state.view) {
         case 'create':
-            showScreen('createProfileScreen', 'Neues Profil', 'Charakterprofil erstellen');
-            $('createProfileScreen').reset();
+            showProfileForm(profile);
             break;
         case 'profile':
             showScreen('profileScreen', profile.name);
@@ -200,11 +201,28 @@ function renderResult() {
 
 // ---------- Profiles ----------
 
-function createProfile(event) {
+function showProfileForm(profile) {
+    showScreen('createProfileScreen', profile ? 'Profil umbenennen' : 'Neues Profil', profile ? '' : 'Charakterprofil erstellen');
+    const form = $('createProfileScreen');
+    form.reset();
+    form.querySelector('h2').textContent = profile ? 'Profil umbenennen' : 'Neues Profil erstellen';
+    form.querySelector('[type=submit]').textContent = profile ? 'Speichern' : 'Profil erstellen';
+    form.elements.namedItem('name').value = profile?.name ?? '';
+}
+
+function saveProfile(event) {
     event.preventDefault();
+    const name = event.target.elements.namedItem('name').value.trim();
+    const profile = currentProfile();
+    if (profile) {
+        profile.name = name;
+        saveProfiles();
+        goBack();
+        return;
+    }
     profiles.push({
         id: crypto.randomUUID(),
-        name: event.target.elements.namedItem('name').value.trim(),
+        name,
         attackFunctions: [],
         diceFunctions: [],
         simpleDices: STANDARD_DICE.map(sides => ({ sides }))
@@ -215,6 +233,7 @@ function createProfile(event) {
 
 function openProfile(id) {
     lastRoll = null;
+    $('quickRollForm').reset();
     navigate({ view: 'profile', profileId: id });
 }
 
@@ -264,6 +283,17 @@ function onItemClick(list, index) {
         removeWithUndo(profile[list], index, `"${item.name ?? `W${item.sides}`}" gelöscht`);
     } else if (mode === 'edit') {
         navigate({ view: 'form', profileId: profile.id, form: list, index });
+    } else if (mode === 'move') {
+        // First tap picks an entry, the second tap in the same list is the target
+        if (moveSource?.list === list) {
+            moveItem(profile[list], moveSource.index, index);
+            moveSource = null;
+            saveProfiles();
+            renderProfile(profile);
+        } else {
+            moveSource = { list, index };
+        }
+        showMoveSelection();
     } else {
         roll(item, list);
     }
@@ -298,13 +328,18 @@ function toggleCustomSides(form) {
     input.hidden = input.disabled = form.elements.namedItem('diceType').value !== 'custom';
 }
 
-function saveItem(event) {
-    event.preventDefault();
-    const form = event.target;
+// Native validation plus the formula check, shown as the browser's validation bubble
+function validate(form) {
     form.querySelectorAll('[data-formula]').forEach(input => {
         input.setCustomValidity(parseFormula(input.value) ? '' : 'Ungültige Formel. Beispiele: 3w6+3, 3w6+3+2w6-2, 2w20h+5');
     });
-    if (!form.reportValidity()) return;
+    return form.reportValidity();
+}
+
+function saveItem(event) {
+    event.preventDefault();
+    const form = event.target;
+    if (!validate(form)) return;
 
     const { form: list, index } = history.state;
     const items = currentProfile()[list];
@@ -328,6 +363,18 @@ function roll(item, list) {
     const formulas = list === 'attackFunctions'
         ? [['Angriff', item.attack], ['Schaden', item.damage]]
         : [[null, list === 'diceFunctions' ? item.formula : `1w${item.sides}`]];
+    rollFormulas(item.name ?? `W${item.sides}`, formulas, list === 'simpleDices' ? SOUNDS.single : SOUNDS.multi);
+}
+
+function quickRoll(event) {
+    event.preventDefault();
+    if (validate(event.target)) {
+        rollFormulas('Freier Wurf', [[null, event.target.elements.namedItem('formula').value]], SOUNDS.multi);
+    }
+}
+
+// formulas: [[label, formula], ...]
+function rollFormulas(name, formulas, sounds) {
     const results = formulas.map(([, formula]) => rollFormula(formula));
     if (results.includes(null)) {
         showToast('Fehlerhafte Formel. Bitte über "Bearbeiten" korrigieren.');
@@ -335,11 +382,11 @@ function roll(item, list) {
     }
 
     lastRoll = {
-        name: item.name ?? `W${item.sides}`,
+        name,
         lines: results.map((result, i) => ({ label: formulas[i][0], ...result }))
     };
 
-    playRandomSound(list === 'simpleDices' ? SOUNDS.single : SOUNDS.multi);
+    if (settings.soundEnabled) playRandomSound(sounds);
     navigate({ ...history.state, result: true }, !!history.state.result);
     showAnimation();
 }
@@ -372,17 +419,46 @@ function hideAnimation() {
 
 // ---------- Modes, settings, toast ----------
 
+const MODE_TEXT = {
+    edit: 'Element antippen zum Bearbeiten',
+    move: 'Element antippen, dann Zielposition',
+    delete: 'Element antippen zum Löschen'
+};
+
 function setMode(next) {
     mode = next;
+    moveSource = null;
     $('profileContent').dataset.mode = next ?? '';
     $('modeBar').hidden = !next;
-    $('modeText').textContent = next === 'delete' ? 'Element antippen zum Löschen' : 'Element antippen zum Bearbeiten';
+    $('modeText').textContent = MODE_TEXT[next] ?? '';
+    // Move mode stays active for several moves, so its button ends it instead of cancelling
+    $('modeCancelBtn').textContent = next === 'move' ? 'Fertig' : 'Abbrechen';
+    showMoveSelection();
 }
 
-function updateAnimationButton() {
-    const button = $('toggleAnimationBtn');
-    button.textContent = settings.animationEnabled ? 'Animation ausschalten' : 'Animation einschalten';
-    button.setAttribute('aria-pressed', String(settings.animationEnabled));
+function showMoveSelection() {
+    document.querySelectorAll('[data-list]').forEach(card => {
+        card.classList.toggle('selected', card.dataset.list === moveSource?.list && Number(card.dataset.index) === moveSource?.index);
+    });
+    if (mode === 'move') $('modeText').textContent = moveSource ? 'Zielposition antippen' : MODE_TEXT.move;
+}
+
+function updateSettingsButtons() {
+    for (const [id, key, label] of [['toggleAnimationBtn', 'animationEnabled', 'Animation'], ['toggleSoundBtn', 'soundEnabled', 'Sound']]) {
+        $(id).textContent = `${label} ${settings[key] ? 'ausschalten' : 'einschalten'}`;
+        $(id).setAttribute('aria-pressed', String(settings[key]));
+    }
+}
+
+// Keep the screen on at the table. The browser drops the lock when the app is hidden,
+// so it is requested again whenever the app becomes visible.
+async function keepScreenOn() {
+    if (document.visibilityState !== 'visible') return;
+    try {
+        await navigator.wakeLock?.request('screen');
+    } catch {
+        // Not allowed, for example in battery saver mode
+    }
 }
 
 function onSettingsClick(event) {
@@ -393,10 +469,12 @@ function onSettingsClick(event) {
     } else if (button.dataset.mode) {
         $('settingsDialog').close();
         setMode(button.dataset.mode);
-    } else if (button.id === 'toggleAnimationBtn') {
-        settings.animationEnabled = !settings.animationEnabled;
+    } else if (button.id === 'renameProfileBtn') {
+        navigate({ view: 'create', profileId: currentProfile().id });
+    } else if (button.dataset.setting) {
+        settings[button.dataset.setting] = !settings[button.dataset.setting];
         saveSettings();
-        updateAnimationButton();
+        updateSettingsButtons();
     }
 }
 
@@ -427,7 +505,10 @@ function init() {
     const storedSettings = load('appSettings', {});
     const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
     settings.animationEnabled = storedSettings.animationEnabled ?? !reducedMotion;
-    updateAnimationButton();
+    settings.soundEnabled = storedSettings.soundEnabled ?? true;
+    updateSettingsButtons();
+    keepScreenOn();
+    document.addEventListener('visibilitychange', keepScreenOn);
 
     fetch('img/dice.webp').then(r => r.blob()).then(blob => {
         animationBlob = blob;
@@ -441,7 +522,7 @@ function init() {
     document.querySelectorAll('[data-back]').forEach(button => button.addEventListener('click', goBack));
 
     $('createProfileBtn').addEventListener('click', () => navigate({ view: 'create' }));
-    $('createProfileScreen').addEventListener('submit', createProfile);
+    $('createProfileScreen').addEventListener('submit', saveProfile);
     $('exportBtn').addEventListener('click', exportProfiles);
     $('importBtn').addEventListener('click', () => $('importFile').click());
     $('importFile').addEventListener('change', event => {
@@ -471,8 +552,11 @@ function init() {
 
     for (const { id } of Object.values(FORMS)) {
         $(id).addEventListener('submit', saveItem);
-        $(id).addEventListener('input', event => event.target.setCustomValidity?.(''));
     }
+    $('quickRollForm').addEventListener('submit', quickRoll);
+    document.querySelectorAll('[data-formula]').forEach(input => {
+        input.addEventListener('input', () => input.setCustomValidity(''));
+    });
     $('simpleForm').elements.namedItem('diceType').addEventListener('change', () => toggleCustomSides($('simpleForm')));
 
     $('settingsDialog').addEventListener('click', onSettingsClick);

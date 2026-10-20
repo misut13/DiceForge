@@ -543,6 +543,118 @@ test('Browser zurück/vor durch Bildschirme', async ({ page }) => {
 
 // ---------- Export / import ----------
 
+test.describe('Sound', () => {
+    test('Sound aus: kein Sound beim Würfeln, bleibt nach Neuladen aus', async ({ page }) => {
+        const sounds = [];
+        page.on('request', r => r.url().includes('/sounds/') && sounds.push(r.url()));
+        await open(page, { profiles: [gandalf()] });
+        await openProfile(page);
+        await openSettings(page);
+        await expect(page.locator('#toggleSoundBtn')).toHaveText('Sound ausschalten');
+        await page.click('#toggleSoundBtn');
+        await expect(page.locator('#toggleSoundBtn')).toHaveText('Sound einschalten');
+        await page.reload();
+        await expect(page.locator('#toggleSoundBtn')).toHaveText('Sound einschalten');
+        await roll(page, 'simpleDices', 0, []);
+        await expect(page.locator('#resultDialog')).toBeVisible();
+        await closeResult(page);
+        expect(sounds).toEqual([]);
+    });
+});
+
+test.describe('Bildschirm', () => {
+    test('Bildschirm bleibt an, auch nach App-Wechsel', async ({ page }) => {
+        await page.addInitScript(() => {
+            window.__wakeLocks = 0;
+            Object.defineProperty(navigator, 'wakeLock', {
+                configurable: true,
+                value: { request: async () => { window.__wakeLocks++; return { release: async () => {} }; } }
+            });
+        });
+        await open(page);
+        await expect.poll(() => page.evaluate(() => window.__wakeLocks)).toBe(1);
+        await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+        await expect.poll(() => page.evaluate(() => window.__wakeLocks)).toBe(2);
+    });
+});
+
+test.describe('Freier Wurf', () => {
+    test.beforeEach(async ({ page }) => {
+        await open(page, { profiles: [gandalf()] });
+        await openProfile(page);
+    });
+
+    test('Formel würfeln ohne Speichern, Formel bleibt im Feld', async ({ page }) => {
+        await page.fill('#quickRollForm [name=formula]', '2w6+3');
+        await page.evaluate(() => { window.__rand = [0, 0.5]; });
+        await page.press('#quickRollForm [name=formula]', 'Enter');
+        await expect(page.locator('#resultText .roll-name')).toHaveText('Freier Wurf');
+        await expect.poll(() => resultLines(page)).toEqual([{ label: null, total: '8', detail: '2w6 [1, 4] +3' }]);
+        await closeResult(page);
+        await expect(page.locator('#quickRollForm [name=formula]')).toHaveValue('2w6+3');
+        expect(await stored(page)).toEqual([gandalf()]);
+    });
+
+    test('Ungültige Formel wird abgelehnt', async ({ page }) => {
+        await page.fill('#quickRollForm [name=formula]', 'abc');
+        await page.click('#quickRollForm [type=submit]');
+        expect(await page.locator('#quickRollForm [name=formula]').evaluate(i => i.validationMessage)).toMatch(/^Ungültige Formel/);
+        await expect(page.locator('#resultDialog')).toBeHidden();
+    });
+});
+
+test.describe('Umbenennen und Verschieben', () => {
+    const abc = () => gandalf({ attackFunctions: [], diceFunctions: ['A', 'B', 'C'].map(name => ({ name, formula: '1w6' })) });
+
+    test('Profil umbenennen ändert den Namen, legt kein neues an', async ({ page }) => {
+        await open(page, { profiles: [gandalf()] });
+        await openProfile(page);
+        await openSettings(page);
+        await page.click('#renameProfileBtn');
+        await expect(page.locator('#headerTitle')).toHaveText('Profil umbenennen');
+        await expect(page.locator('#createProfileScreen [name=name]')).toHaveValue('Würfelkönig Gandalf');
+        await expect(page.locator('#createProfileScreen [type=submit]')).toHaveText('Speichern');
+        await page.fill('#createProfileScreen [name=name]', 'Gandalf der Weisse');
+        await page.click('#createProfileScreen [type=submit]');
+        await expect(page.locator('#profileScreen')).toBeVisible();
+        await expect(page.locator('#headerTitle')).toHaveText('Gandalf der Weisse');
+        expect((await stored(page)).map(p => p.name)).toEqual(['Gandalf der Weisse']);
+    });
+
+    test('Verschieben: Element antippen, dann Ziel, bleibt nach Neuladen', async ({ page }) => {
+        await open(page, { profiles: [abc()] });
+        await openProfile(page);
+        await openSettings(page);
+        await page.click('[data-mode=move]');
+        await expect(page.locator('#modeCancelBtn')).toHaveText('Fertig');
+        await page.click('[data-list=diceFunctions][data-index="2"]');
+        await expect(page.locator('[data-list=diceFunctions][data-index="2"]')).toHaveClass(/selected/);
+        await page.click('[data-list=diceFunctions][data-index="0"]');
+        await expect.poll(() => cards(page, 'diceFunctions')).toEqual(['C 1w6', 'A 1w6', 'B 1w6']);
+        await expect(page.locator('#modeBar')).toBeVisible();
+        await page.click('[data-list=diceFunctions][data-index="0"]');
+        await page.click('[data-list=diceFunctions][data-index="2"]');
+        await expect.poll(() => cards(page, 'diceFunctions')).toEqual(['A 1w6', 'B 1w6', 'C 1w6']);
+        await page.click('#modeCancelBtn');
+        await expect(page.locator('#modeBar')).toBeHidden();
+        await page.reload();
+        await expect.poll(() => cards(page, 'diceFunctions')).toEqual(['A 1w6', 'B 1w6', 'C 1w6']);
+    });
+
+    test('Verschieben zwischen verschiedenen Listen wählt nur neu aus', async ({ page }) => {
+        await open(page, { profiles: [abc()] });
+        await openProfile(page);
+        await openSettings(page);
+        await page.click('[data-mode=move]');
+        await page.click('[data-list=simpleDices][data-index="0"]');
+        await page.click('[data-list=diceFunctions][data-index="1"]');
+        await expect(page.locator('[data-list=diceFunctions][data-index="1"]')).toHaveClass(/selected/);
+        await expect(page.locator('.selected')).toHaveCount(1);
+        await expect.poll(() => cards(page, 'diceFunctions')).toEqual(['A 1w6', 'B 1w6', 'C 1w6']);
+        await expect.poll(() => cards(page, 'simpleDices')).toEqual(STANDARD.map(n => `W${n}`));
+    });
+});
+
 test.describe('Export und Import', () => {
     test('Export enthält genau die gespeicherten Daten', async ({ page }) => {
         await open(page, { profiles: backup });

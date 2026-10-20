@@ -48,6 +48,11 @@
 
         <!-- Profile detail -->
         <main class="screen" id="profileScreen" hidden>
+            <form class="quick-roll" id="quickRollForm">
+                <input type="text" name="formula" placeholder="Freier Wurf, z.B. 2w6+3" maxlength="20" required data-formula
+                       aria-label="Freier Wurf" autocomplete="off" autocapitalize="off" spellcheck="false">
+                <button class="btn btn-small" type="submit">Würfeln</button>
+            </form>
             <div class="profile-content" id="profileContent">
                 <section class="function-list" id="functionList" aria-label="Funktionen"></section>
                 <section class="simple-dice-list" id="simpleDiceList" aria-label="Einfache Würfel"></section>
@@ -124,8 +129,11 @@
             <button class="btn" data-add="diceFunctions">Würfelfunktion hinzufügen</button>
             <button class="btn" data-add="simpleDices">Einfachen Würfel hinzufügen</button>
             <button class="btn" data-mode="edit">Bearbeiten</button>
+            <button class="btn" data-mode="move">Verschieben</button>
             <button class="btn" data-mode="delete">Löschen</button>
-            <button class="btn" id="toggleAnimationBtn" aria-pressed="true">Animation ausschalten</button>
+            <button class="btn" id="renameProfileBtn">Profil umbenennen</button>
+            <button class="btn btn-small" id="toggleAnimationBtn" data-setting="animationEnabled" aria-pressed="true">Animation ausschalten</button>
+            <button class="btn btn-small" id="toggleSoundBtn" data-setting="soundEnabled" aria-pressed="true">Sound ausschalten</button>
         </div>
     </dialog>
 

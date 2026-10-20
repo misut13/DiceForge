@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseFormula, rollFormula, normalizeProfiles, mergeProfiles } from './model.js';
+import { parseFormula, rollFormula, normalizeProfiles, mergeProfiles, moveItem } from './model.js';
 
 // Deterministic random source: 0.99 gives the highest face, 0 gives 1
 const sequence = values => () => values.shift();
@@ -132,5 +132,21 @@ describe('mergeProfiles', () => {
         const existing = [profile('a', 'A')];
         mergeProfiles(existing, [profile('a', 'Neu'), profile('b', 'B')]);
         assert.deepEqual(existing, [profile('a', 'A')]);
+    });
+});
+
+describe('moveItem', () => {
+    test('moves a later item forward to the target position', () => {
+        assert.deepEqual(moveItem(['a', 'b', 'c'], 2, 0), ['c', 'a', 'b']);
+    });
+
+    test('moves an earlier item back to the target position', () => {
+        assert.deepEqual(moveItem(['a', 'b', 'c'], 0, 2), ['b', 'c', 'a']);
+    });
+
+    test('changes the list in place so other references stay valid', () => {
+        const list = ['a', 'b'];
+        moveItem(list, 1, 0);
+        assert.deepEqual(list, ['b', 'a']);
     });
 });
