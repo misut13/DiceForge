@@ -491,11 +491,42 @@ dialog::backdrop {
 }
 
 .roll-name {
+    font-size: 17px;
     font-weight: bold;
 }
 
+/* Attack and damage sit side by side when they fit, the total is what players read out */
+.roll-results {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px 16px;
+    margin-top: 8px;
+}
+
 .roll-result {
-    margin-top: 10px;
+    flex: 1 1 100px;
+}
+
+.roll-label {
+    font-size: 13px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #5a4632;
+}
+
+.roll-total {
+    font-size: 44px;
+    font-weight: bold;
+    line-height: 1.1;
+    color: var(--ink);
+}
+
+.roll-detail {
+    font-size: 12px;
+    color: #5a4632;
+    overflow-wrap: anywhere;
 }
 
 .natural {

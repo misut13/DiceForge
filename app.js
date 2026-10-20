@@ -187,14 +187,14 @@ function renderProfile(profile) {
 function renderResult() {
     $('resultText').replaceChildren(
         el('div', 'roll-name', lastRoll.name),
-        ...lastRoll.lines.map(line => {
+        el('div', 'roll-results', ...lastRoll.lines.map(line => {
             const row = el('div', 'roll-result');
-            if (line.label) row.append(el('strong', '', `${line.label}:`), ' ');
-            row.append(`${line.detail} = `, el('strong', '', String(line.total)));
+            if (line.label) row.append(el('div', 'roll-label', line.label));
+            row.append(el('div', 'roll-total', String(line.total)), el('div', 'roll-detail', line.detail));
             if (line.natural === 20) row.append(el('div', 'natural natural--20', 'Natürliche 20!'));
             if (line.natural === 1) row.append(el('div', 'natural natural--1', 'Natürliche 1'));
             return row;
-        })
+        }))
     );
 }
 

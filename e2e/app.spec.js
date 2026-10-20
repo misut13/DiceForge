@@ -46,6 +46,12 @@ const stored = page => page.evaluate(() => JSON.parse(localStorage.getItem('prof
 const resultState = page => page.evaluate(() => history.state?.result);
 const cards = (page, list) => page.locator(`[data-list=${list}]`)
     .evaluateAll(els => els.map(e => e.innerText.trim().replace(/\s+/g, ' ')));
+// Result lines of the open result popup as { label, total, detail }
+const resultLines = page => page.locator('#resultText .roll-result').evaluateAll(rows => rows.map(row => ({
+    label: row.querySelector('.roll-label')?.textContent ?? null,
+    total: row.querySelector('.roll-total')?.textContent,
+    detail: row.querySelector('.roll-detail')?.textContent
+})));
 const profileNames = page => page.locator('.profile-name').allTextContents();
 const validity = (page, selector, key) => page.locator(selector).evaluate((i, key) => i.validity[key], key);
 
@@ -256,16 +262,19 @@ test.describe('Würfeln', () => {
     test('W20 würfeln: natürliche 20, schliessen per Button', async ({ page }) => {
         await roll(page, 'simpleDices', 6, [0.999]);
         await expect(page.locator('#resultDialog')).toBeVisible();
-        await expect(page.locator('#resultText')).toHaveText(/W20.*1w20 \[20\] = 20.*Natürliche 20!/);
+        await expect(page.locator('#resultText .roll-name')).toHaveText('W20');
+        await expect.poll(() => resultLines(page)).toEqual([{ label: null, total: '20', detail: '1w20 [20]' }]);
+        await expect(page.locator('#resultText .natural')).toHaveText('Natürliche 20!');
         await closeResult(page);
     });
 
     test('Angriff würfeln: Summen stimmen, natürliche 1, schliessen per Escape', async ({ page }) => {
         await roll(page, 'attackFunctions', 0, [0, 0.5, 0.5]);
-        const text = page.locator('#resultText');
-        await expect(text).toHaveText(/Angriff: 1w20 \[1\] \+5 = 6/);
-        await expect(text).toHaveText(/Natürliche 1/);
-        await expect(text).toHaveText(/Schaden: 2w6 \[4, 4\] \+3 = 11/);
+        await expect.poll(() => resultLines(page)).toEqual([
+            { label: 'Angriff', total: '6', detail: '1w20 [1] +5' },
+            { label: 'Schaden', total: '11', detail: '2w6 [4, 4] +3' }
+        ]);
+        await expect(page.locator('#resultText .natural')).toHaveText('Natürliche 1');
         await page.keyboard.press('Escape');
         await expect(page.locator('#resultDialog')).toBeHidden();
         await expect.poll(() => resultState(page)).toBeUndefined();
@@ -273,7 +282,7 @@ test.describe('Würfeln', () => {
 
     test('4w6h3 würfeln: bester 3 von 4, schliessen per Klick daneben', async ({ page }) => {
         await roll(page, 'diceFunctions', 0, [0, 0.5, 0.999, 0.5]);
-        await expect(page.locator('#resultText')).toHaveText(/4w6h3 \[\(1\), 4, 6, 4\] = 14/);
+        await expect.poll(() => resultLines(page)).toEqual([{ label: null, total: '14', detail: '4w6h3 [(1), 4, 6, 4]' }]);
         await page.mouse.click(3, 3);
         await expect(page.locator('#resultDialog')).toBeHidden();
     });
@@ -284,6 +293,14 @@ test.describe('Würfeln', () => {
         await page.goBack();
         await expect(page.locator('#resultDialog')).toBeHidden();
         await expect(page.locator('#profileScreen')).toBeVisible();
+    });
+
+    test('Endsumme ist mindestens doppelt so gross wie die Herleitung', async ({ page }) => {
+        await roll(page, 'attackFunctions', 0, [0, 0.5, 0.5]);
+        const fontSize = selector => page.locator(selector).first().evaluate(e => parseFloat(getComputedStyle(e).fontSize));
+        await expect(page.locator('#resultText .roll-total')).toHaveText(['6', '11']);
+        expect(await fontSize('#resultText .roll-total')).toBeGreaterThanOrEqual(2 * await fontSize('#resultText .roll-detail'));
+        await closeResult(page);
     });
 
     test('Ergebnis zeigt nur den aktuellen Wurf, keine früheren', async ({ page }) => {
@@ -534,7 +551,10 @@ test.describe('Export und Import', () => {
         expect(await stored(page)).toEqual(exported.data.profiles);
         await openProfile(page);
         await roll(page, 'attackFunctions', 0, [0.999, 0.999]);
-        await expect(page.locator('#resultText')).toHaveText(/1w20 \[20\] \+5 = 25.*1w8 \[8\] = 8/);
+        await expect.poll(() => resultLines(page)).toEqual([
+            { label: 'Angriff', total: '25', detail: '1w20 [20] +5' },
+            { label: 'Schaden', total: '8', detail: '1w8 [8]' }
+        ]);
         await closeResult(page);
     });
 
@@ -611,7 +631,7 @@ test.describe('Daten der Originalversion', () => {
         await openProfile(page, '1727000000000abc123xyz');
         await expect.poll(() => cards(page, 'simpleDices')).toEqual(['W6', 'W13']);
         await roll(page, 'diceFunctions', 0, Array(8).fill(0));
-        await expect(page.locator('#resultText')).toHaveText(/8w6 \[1, 1, 1, 1, 1, 1, 1, 1\] = 8/);
+        await expect.poll(() => resultLines(page)).toEqual([{ label: null, total: '8', detail: '8w6 [1, 1, 1, 1, 1, 1, 1, 1]' }]);
         await closeResult(page);
     });
 
