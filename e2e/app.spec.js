@@ -31,6 +31,12 @@ async function open(page, { profiles, appSettings = { animationEnabled: false } 
     if (appSettings) storage.appSettings = appSettings;
     const seed = Object.fromEntries(Object.entries(storage).map(([k, v]) => [k, typeof v === 'string' ? v : JSON.stringify(v)]));
     await page.addInitScript(seed => {
+        // Sounds are still requested but muted, so test runs stay silent on the developer's speakers
+        const play = HTMLMediaElement.prototype.play;
+        HTMLMediaElement.prototype.play = function () {
+            this.muted = true;
+            return play.call(this);
+        };
         const real = Math.random;
         window.__rand = [];
         Math.random = () => (window.__rand.length ? window.__rand.shift() : real());
