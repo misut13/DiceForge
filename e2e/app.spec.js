@@ -303,10 +303,12 @@ test.describe('Würfeln', () => {
 
     test('Sounds laden (200, audio/*)', async ({ page }) => {
         for (const [list, pattern] of [['simpleDices', /\/sounds\/dice\d\.m4a/], ['attackFunctions', /\/sounds\/multidice\d\.m4a/]]) {
-            const response = page.waitForResponse(r => pattern.test(r.url()));
+            // Linux WebKit loads media through GStreamer, its response reports status 0,
+            // so check the request the app makes and fetch the file separately
+            const request = page.waitForRequest(r => pattern.test(r.url()));
             await roll(page, list, 0, []);
-            const r = await response;
-            expect(`${r.status()} ${r.headers()['content-type']}`).toMatch(/^(200|206) audio\//);
+            const file = await page.request.get((await request).url());
+            expect(`${file.status()} ${file.headers()['content-type']}`).toMatch(/^200 audio\//);
             await closeResult(page);
         }
     });
