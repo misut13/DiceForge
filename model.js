@@ -20,8 +20,8 @@ export function parseFormula(formula) {
             const sides = Number(dice[2]);
             const keepMode = (dice[3] || '').toLowerCase();
             const keep = keepMode ? Number(dice[4] || 1) : count;
-            // Huge counts like 99999999w6 would freeze the browser
-            if (count < 1 || count > MAX_DICE || sides < 1 || keep < 1 || keep > count) return null;
+            // Huge counts like 99999999w6 would freeze the browser; 0w6 fails on keep < 1
+            if (count > MAX_DICE || sides < 1 || keep < 1 || keep > count) return null;
             terms.push({
                 type: 'dice',
                 sign,
@@ -102,4 +102,19 @@ export function normalizeProfiles(data) {
             .filter(d => d && Number.isInteger(d.sides) && d.sides >= 1)
             .map(({ sides }) => ({ sides }))
     }));
+}
+
+// Import: a profile with a known id replaces the existing one in place, so re-importing
+// a backup does not duplicate it. New ids are appended.
+export function mergeProfiles(existing, imported) {
+    const merged = [...existing];
+    for (const profile of imported) {
+        const index = merged.findIndex(p => p.id === profile.id);
+        if (index >= 0) {
+            merged[index] = profile;
+        } else {
+            merged.push(profile);
+        }
+    }
+    return merged;
 }

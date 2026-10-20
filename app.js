@@ -1,4 +1,4 @@
-﻿import { parseFormula, rollFormula, normalizeProfiles } from './model.js';
+﻿import { parseFormula, rollFormula, normalizeProfiles, mergeProfiles } from './model.js';
 
 const STANDARD_DICE = [3, 4, 6, 8, 10, 12, 20, 100];
 const SOUNDS = {
@@ -253,15 +253,7 @@ async function importProfiles(file) {
         showToast('Datei konnte nicht gelesen werden.');
         return;
     }
-    // Same id replaces the existing profile, so re-importing a backup does not duplicate it
-    for (const profile of imported) {
-        const index = profiles.findIndex(p => p.id === profile.id);
-        if (index >= 0) {
-            profiles[index] = profile;
-        } else {
-            profiles.push(profile);
-        }
-    }
+    profiles = mergeProfiles(profiles, imported);
     saveProfiles();
     render(history.state);
     showToast(`${imported.length} Profil(e) importiert.`);

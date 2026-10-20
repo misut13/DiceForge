@@ -22,8 +22,11 @@ Websites, die 7 Tage nicht benutzt wurden, deshalb regelmässig exportieren.
 ## Entwicklung
 
 Kein Build nötig. `model.js` enthält die Würfel- und Datenlogik ohne DOM, `app.js` die Oberfläche.
+Regeln für die Weiterentwicklung (Test-first, Datenkompatibilität, Layout) stehen in `CLAUDE.md`.
 
 ```sh
-python3 -m http.server   # dann http://localhost:8000 (ES-Module laufen nicht über file://)
-node model.test.js       # Test der Würfellogik
+npm install          # nur Testwerkzeuge, die App selbst hat keine Abhängigkeiten
+npm test             # Unit-Tests der Würfellogik
+npm run test:e2e     # Browser-Tests (Handy, iPhone/WebKit, Laptop)
+npm run serve        # http://localhost:8000 (ES-Module laufen nicht über file://)
 ```
