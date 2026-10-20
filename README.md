@@ -31,7 +31,8 @@ Websites, die 7 Tage nicht benutzt wurden, deshalb regelmässig exportieren.
 ## Entwicklung
 
 Kein Build nötig. `model.js` enthält die Würfel- und Datenlogik ohne DOM, `app.js` die Oberfläche.
-Regeln für die Weiterentwicklung (Test-first, Datenkompatibilität, Layout) stehen in `CLAUDE.md`.
+Regeln für die Weiterentwicklung (Test-first, Datenkompatibilität, Layout) stehen in `CLAUDE.md`,
+mögliche nächste Schritte in `ROADMAP.md`.
 
 ```sh
 npm install          # nur Testwerkzeuge, die App selbst hat keine Abhängigkeiten

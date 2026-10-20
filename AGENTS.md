@@ -10,6 +10,7 @@ attack functions (attack + damage roll), dice functions (`3w6+3`) and simple dic
 
 - Live: https://misut13.github.io/DiceForge/ (GitHub Pages, deployed by the CI workflow after the tests pass)
 - Tag `original`: the GPT/Codex version before the 2026-10 restructuring
+- `ROADMAP.md`: open feature ideas (German). Tick items off there when they are implemented
 
 ## Commands
 
