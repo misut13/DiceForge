@@ -674,38 +674,73 @@ test.describe('Umbenennen und Verschieben', () => {
         expect((await stored(page)).map(p => p.name)).toEqual(['Gandalf der Weisse']);
     });
 
-    test('Verschieben: Element antippen, dann Ziel, bleibt nach Neuladen', async ({ page }) => {
+    // Drags an entry by its handle onto another card, like a finger or mouse would
+    async function dragTo(page, from, to) {
+        const handle = await page.locator(`${from} .drag-handle`).boundingBox();
+        const target = await page.locator(to).boundingBox();
+        await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2, { steps: 8 });
+        await page.mouse.up();
+    }
+
+    async function editMode(page) {
+        await openSettings(page);
+        await page.click('[data-mode=edit]');
+        await expect(page.locator('#modeBar')).toBeVisible();
+    }
+
+    test('Es gibt keinen eigenen Verschieben-Modus mehr', async ({ page }) => {
         await open(page, { profiles: [abc()] });
         await openProfile(page);
         await openSettings(page);
-        await page.click('[data-mode=move]');
-        await expect(page.locator('#modeCancelBtn')).toHaveText('Fertig');
-        await page.click('[data-list=diceFunctions][data-index="2"]');
-        await expect(page.locator('[data-list=diceFunctions][data-index="2"]')).toHaveClass(/selected/);
-        await page.click('[data-list=diceFunctions][data-index="0"]');
-        await expect.poll(() => cards(page, 'diceFunctions')).toEqual(['C 1w6', 'A 1w6', 'B 1w6']);
-        await expect(page.locator('#modeBar')).toBeVisible();
-        await page.click('[data-list=diceFunctions][data-index="0"]');
-        await page.click('[data-list=diceFunctions][data-index="2"]');
-        await expect.poll(() => cards(page, 'diceFunctions')).toEqual(['A 1w6', 'B 1w6', 'C 1w6']);
-        await page.click('#modeCancelBtn');
-        await expect(page.locator('#modeBar')).toBeHidden();
-        await page.reload();
-        await expect.poll(() => cards(page, 'diceFunctions')).toEqual(['A 1w6', 'B 1w6', 'C 1w6']);
+        await expect(page.locator('[data-mode=move]')).toHaveCount(0);
     });
 
-    test('Verschieben zwischen verschiedenen Listen wählt nur neu aus', async ({ page }) => {
+    test('Griffe erscheinen nur im Bearbeiten-Modus', async ({ page }) => {
         await open(page, { profiles: [abc()] });
         await openProfile(page);
-        await openSettings(page);
-        await page.click('[data-mode=move]');
-        await page.click('[data-list=simpleDices][data-index="0"]');
-        await page.click('[data-list=diceFunctions][data-index="1"]');
-        await expect(page.locator('[data-list=diceFunctions][data-index="1"]')).toHaveClass(/selected/);
-        await expect(page.locator('.selected')).toHaveCount(1);
+        await expect(page.locator('.drag-handle').first()).toBeHidden();
+        await editMode(page);
+        await expect(page.locator('[data-list=diceFunctions] .drag-handle')).toHaveCount(3);
+        await expect(page.locator('[data-list=diceFunctions][data-index="0"] .drag-handle')).toBeVisible();
+    });
+
+    test('Ziehen am Griff verschiebt, Modus bleibt, Reihenfolge bleibt nach Neuladen', async ({ page }) => {
+        await open(page, { profiles: [abc()] });
+        await openProfile(page);
+        await editMode(page);
+        await dragTo(page, '[data-list=diceFunctions][data-index="2"]', '[data-list=diceFunctions][data-index="0"]');
+        await expect.poll(() => cards(page, 'diceFunctions')).toEqual(['C 1w6', 'A 1w6', 'B 1w6']);
+        await expect(page.locator('#modeBar')).toBeVisible();
+        await expect(page.locator('#profileScreen')).toBeVisible();
+        await dragTo(page, '[data-list=simpleDices][data-index="0"]', '[data-list=simpleDices][data-index="7"]');
+        await expect.poll(() => cards(page, 'simpleDices')).toEqual([4, 6, 8, 10, 12, 20, 100, 3].map(n => `W${n}`));
+        await page.reload();
+        await expect.poll(() => cards(page, 'diceFunctions')).toEqual(['C 1w6', 'A 1w6', 'B 1w6']);
+        await expect.poll(() => cards(page, 'simpleDices')).toEqual([4, 6, 8, 10, 12, 20, 100, 3].map(n => `W${n}`));
+    });
+
+    test('Ziehen auf eine andere Art von Eintrag ändert nichts', async ({ page }) => {
+        await open(page, { profiles: [abc()] });
+        await openProfile(page);
+        await editMode(page);
+        await dragTo(page, '[data-list=diceFunctions][data-index="0"]', '[data-list=simpleDices][data-index="0"]');
         await expect.poll(() => cards(page, 'diceFunctions')).toEqual(['A 1w6', 'B 1w6', 'C 1w6']);
         await expect.poll(() => cards(page, 'simpleDices')).toEqual(STANDARD.map(n => `W${n}`));
     });
+
+    test('Antippen der Karte öffnet das Formular, Antippen des Griffs nicht', async ({ page }) => {
+        await open(page, { profiles: [abc()] });
+        await openProfile(page);
+        await editMode(page);
+        await page.click('[data-list=diceFunctions][data-index="1"] .drag-handle');
+        await expect(page.locator('#profileScreen')).toBeVisible();
+        await page.click('[data-list=diceFunctions][data-index="1"] .item-name');
+        await expect(page.locator('#diceForm')).toBeVisible();
+        await expect(page.locator('#diceForm [name=name]')).toHaveValue('B');
+    });
+
 });
 
 test.describe('Export und Import', () => {

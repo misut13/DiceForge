@@ -382,15 +382,70 @@ select:focus-visible {
     outline-offset: -4px;
 }
 
-.profile-content[data-mode='move'] [data-list] {
-    outline: 2px dashed rgba(47, 125, 50, 0.8);
-    outline-offset: -4px;
+.drag-handle {
+    display: none;
 }
 
-.profile-content [data-list].selected {
-    outline: 3px solid var(--gold);
-    outline-offset: -5px;
-    filter: brightness(1.12);
+/* Handle on the right edge of each card in edit mode; dragging only starts here */
+.profile-content[data-mode='edit'] .drag-handle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: #5a4632;
+    cursor: grab;
+    touch-action: none;
+}
+
+/* Drawn by CSS so the symbol is not part of the card's text */
+.drag-handle::before {
+    content: '☰';
+}
+
+/* Function cards: the handle covers the right frame edge. Dice cards are narrow,
+   so their handle stays inside the frame and leaves the middle free for tapping. */
+.profile-content[data-mode='edit'] .function-card .drag-handle {
+    right: -18px;
+    width: 40px;
+}
+
+.profile-content[data-mode='edit'] .dice-card .drag-handle {
+    right: -11px;
+    width: 24px;
+    font-size: 15px;
+}
+
+.profile-content[data-mode='edit'] .dice-card {
+    padding-right: 12px;
+}
+
+.dice-card,
+.function-card {
+    position: relative;
+}
+
+.dragging {
+    opacity: 0.35;
+}
+
+.drop-target {
+    outline: 3px solid var(--gold) !important;
+    outline-offset: -5px !important;
+}
+
+.drag-ghost {
+    position: fixed;
+    z-index: 100;
+    margin: 0;
+    pointer-events: none;
+    opacity: 0.9;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    cursor: grabbing;
 }
 
 .profile-content[data-mode='edit'] [data-list] {

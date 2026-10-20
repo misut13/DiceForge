@@ -19,8 +19,8 @@ const $ = id => document.getElementById(id);
 
 let profiles = [];
 let settings = { animationEnabled: true, soundEnabled: true, quickRollEnabled: false };
-let mode = null; // null | 'edit' | 'move' | 'delete'
-let moveSource = null; // { list, index } picked first in move mode
+let mode = null; // null | 'edit' | 'delete'
+let drag = null; // entry being dragged by its handle in edit mode
 let lastRoll = null;
 let animationBlob = null;
 let animationUrl = null;
@@ -166,7 +166,10 @@ function renderProfileList() {
 }
 
 function itemCard(list, index, className, ...children) {
-    const card = el('button', `frame-card ${className}`, ...children);
+    // The handle is only shown in edit mode, see startDrag()
+    const handle = el('span', 'drag-handle');
+    handle.setAttribute('aria-hidden', 'true');
+    const card = el('button', `frame-card ${className}`, ...children, handle);
     card.dataset.list = list;
     card.dataset.index = index;
     return card;
@@ -288,17 +291,6 @@ function onItemClick(list, index) {
         removeWithUndo(profile[list], index, `"${item.name ?? `W${item.sides}`}" gelöscht`);
     } else if (mode === 'edit') {
         navigate({ view: 'form', profileId: profile.id, form: list, index });
-    } else if (mode === 'move') {
-        // First tap picks an entry, the second tap in the same list is the target
-        if (moveSource?.list === list) {
-            moveItem(profile[list], moveSource.index, index);
-            moveSource = null;
-            saveProfiles();
-            renderProfile(profile);
-        } else {
-            moveSource = { list, index };
-        }
-        showMoveSelection();
     } else {
         roll(item, list);
     }
@@ -425,27 +417,59 @@ function hideAnimation() {
 // ---------- Modes, settings, toast ----------
 
 const MODE_TEXT = {
-    edit: 'Element antippen zum Bearbeiten',
-    move: 'Element antippen, dann Zielposition',
+    edit: 'Antippen zum Bearbeiten, am ☰ ziehen zum Verschieben',
     delete: 'Element antippen zum Löschen'
 };
 
 function setMode(next) {
     mode = next;
-    moveSource = null;
     $('profileContent').dataset.mode = next ?? '';
     $('modeBar').hidden = !next;
     $('modeText').textContent = MODE_TEXT[next] ?? '';
-    // Move mode stays active for several moves, so its button ends it instead of cancelling
-    $('modeCancelBtn').textContent = next === 'move' ? 'Fertig' : 'Abbrechen';
-    showMoveSelection();
 }
 
-function showMoveSelection() {
-    document.querySelectorAll('[data-list]').forEach(card => {
-        card.classList.toggle('selected', card.dataset.list === moveSource?.list && Number(card.dataset.index) === moveSource?.index);
-    });
-    if (mode === 'move') $('modeText').textContent = moveSource ? 'Zielposition antippen' : MODE_TEXT.move;
+// ---------- Drag and drop (edit mode) ----------
+// Pointer events instead of the HTML drag and drop API, which is unreliable on touch screens.
+// Only the handle starts a drag (touch-action: none), so the list still scrolls everywhere else.
+
+function startDrag(event) {
+    const handle = event.target.closest('.drag-handle');
+    if (!handle || mode !== 'edit') return;
+    event.preventDefault();
+    const card = handle.closest('[data-list]');
+    const rect = card.getBoundingClientRect();
+    const ghost = card.cloneNode(true);
+    ghost.removeAttribute('data-list');
+    ghost.classList.add('drag-ghost');
+    Object.assign(ghost.style, { width: `${rect.width}px`, height: `${rect.height}px`, left: `${rect.left}px`, top: `${rect.top}px` });
+    document.body.append(ghost);
+    card.classList.add('dragging');
+    const index = Number(card.dataset.index);
+    drag = { list: card.dataset.list, from: index, to: index, ghost, dx: event.clientX - rect.left, dy: event.clientY - rect.top };
+}
+
+function moveDrag(event) {
+    if (!drag) return;
+    drag.ghost.style.left = `${event.clientX - drag.dx}px`;
+    drag.ghost.style.top = `${event.clientY - drag.dy}px`;
+    // The ghost ignores pointer events, so this finds the card below the finger
+    const target = document.elementFromPoint(event.clientX, event.clientY)?.closest(`[data-list="${drag.list}"]`);
+    drag.to = target ? Number(target.dataset.index) : drag.from;
+    document.querySelectorAll('.drop-target').forEach(card => card.classList.remove('drop-target'));
+    if (drag.to !== drag.from) target.classList.add('drop-target');
+}
+
+function endDrag() {
+    if (!drag) return;
+    const { list, from, to, ghost } = drag;
+    drag = null;
+    ghost.remove();
+    const profile = currentProfile();
+    if (to !== from) {
+        moveItem(profile[list], from, to);
+        saveProfiles();
+    }
+    renderProfile(profile);
 }
 
 // [button id, setting, label when on, label when off]
@@ -556,10 +580,15 @@ function init() {
     });
 
     $('profileContent').addEventListener('click', event => {
+        if (event.target.closest('.drag-handle')) return;
         const card = event.target.closest('[data-list]');
         if (card) onItemClick(card.dataset.list, Number(card.dataset.index));
     });
     $('modeCancelBtn').addEventListener('click', () => setMode(null));
+    $('profileContent').addEventListener('pointerdown', startDrag);
+    document.addEventListener('pointermove', moveDrag);
+    document.addEventListener('pointerup', endDrag);
+    document.addEventListener('pointercancel', endDrag);
     document.addEventListener('keydown', event => {
         if (event.key === 'Escape') setMode(null);
     });
