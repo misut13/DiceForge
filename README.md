@@ -1,2 +1,29 @@
 Eine einfache Pen and Paper Würfel-App die online unter https://misut13.github.io/DiceForge/
 verfügbar ist. Man kann Profile für seine Spielecharakter erstellen und diesen verschiedene Funktionen hinzufügen.
+
+## Formeln
+
+| Formel | Bedeutung |
+|---|---|
+| `3w6+3` | drei W6 plus 3 (`d` statt `w` geht auch) |
+| `3w6+3+2w6-2` | beliebig kombinierbar, maximal 100 Würfel pro Teil |
+| `2w20h+5` | Vorteil: zwei W20, der höhere zählt |
+| `2w20n+5` | Nachteil: zwei W20, der niedrigere zählt |
+| `4w6h3` | die besten 3 von 4 W6 (auch `kh3` / `kl3`) |
+
+Eine natürliche 20 oder 1 auf einem W20 wird im Ergebnis hervorgehoben.
+
+## Daten
+
+Profile liegen nur im Browser (localStorage). Über "Exportieren" auf der Startseite lässt sich eine
+JSON-Sicherung herunterladen und mit "Importieren" wieder einspielen. Safari löscht die Daten von
+Websites, die 7 Tage nicht benutzt wurden, deshalb regelmässig exportieren.
+
+## Entwicklung
+
+Kein Build nötig. `model.js` enthält die Würfel- und Datenlogik ohne DOM, `app.js` die Oberfläche.
+
+```sh
+python3 -m http.server   # dann http://localhost:8000 (ES-Module laufen nicht über file://)
+node model.test.js       # Test der Würfellogik
+```

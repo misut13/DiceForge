@@ -3,88 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#2a1c10">
     <title>DiceForge</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>">
     <link rel="stylesheet" href="styles.css">
+    <script type="module" src="app.js"></script>
 </head>
 <body>
-    <div class="app-container">
-        <!-- Header -->
-        <div class="header">
-            <button class="back-btn" id="backBtn" style="display: none;" aria-label="Zurück"></button>
-            <button class="settings-btn" id="settingsBtn" style="display: none;" aria-label="Einstellungen"></button>
+    <div class="app">
+        <header class="header" id="header">
+            <button class="header-btn back-btn" id="backBtn" aria-label="Zurück" hidden></button>
+            <button class="header-btn settings-btn" id="settingsBtn" aria-label="Einstellungen" hidden></button>
             <h1 id="headerTitle">DiceForge</h1>
             <div class="subtitle" id="headerSubtitle"></div>
-        </div>
+        </header>
 
-        <!-- Profile List Screen -->
-        <div class="screen active" id="profileListScreen">
-            <div class="profile-list" id="profileList">
-                <div class="empty-state">
-                    <div class="icon">🎲</div>
-                    <h3>Keine Profile vorhanden</h3>
-                    <p>Erstellen Sie Ihr erstes Charakterprofil</p>
-                </div>
+        <!-- Profile list -->
+        <main class="screen" id="profileListScreen">
+            <div class="empty-state" id="emptyState">
+                <div class="icon">🎲</div>
+                <h3>Keine Profile vorhanden</h3>
+                <p>Erstellen Sie Ihr erstes Charakterprofil</p>
             </div>
-            <button class="btn btn-wood" id="createNewProfileBtn">Neues Profil erstellen</button>
-        </div>
+            <div class="profile-list" id="profileList"></div>
+            <div class="actions">
+                <button class="btn" id="createProfileBtn">Neues Profil erstellen</button>
+                <div class="btn-row">
+                    <button class="btn btn-small" id="exportBtn">Exportieren</button>
+                    <button class="btn btn-small" id="importBtn">Importieren</button>
+                </div>
+                <input type="file" id="importFile" accept=".json,application/json" hidden>
+            </div>
+        </main>
 
-        <!-- Create Profile Screen -->
-        <div class="screen" id="createProfileScreen">
+        <!-- Create profile -->
+        <form class="screen form-screen" id="createProfileScreen" hidden>
             <h2>Neues Profil erstellen</h2>
-            <div class="input-group">
-                <label for="profileName">Profilname:</label>
-                <input type="text" id="profileName" placeholder="z.B. Gandalf der Graue" maxlength="24">
-            </div>
-            <button class="btn btn-secondary" id="createProfileBtn">Profil erstellen</button>
-            <button class="btn btn-secondary" id="cancelCreateProfileBtn">Abbrechen</button>
-        </div>
+            <label class="input-group">Profilname:
+                <input type="text" name="name" placeholder="z.B. Gandalf der Graue" maxlength="24" required pattern=".*\S.*">
+            </label>
+            <button class="btn" type="submit">Profil erstellen</button>
+            <button class="btn" type="button" data-back>Abbrechen</button>
+        </form>
 
-        <!-- Profile Detail Screen -->
-        <div class="screen" id="profileDetailScreen">
-            <div id="profileContent">
-                <div id="diceFunctions">
-                    <div id="attackFunctionsList"></div>
-                    <div id="diceFunctionsList"></div>
-                </div>
-
-                <div id="simpleDices">
-                    <div id="simpleDicesList"></div>
-                </div>
+        <!-- Profile detail -->
+        <main class="screen" id="profileScreen" hidden>
+            <div class="profile-content" id="profileContent">
+                <section class="function-list" id="functionList" aria-label="Funktionen"></section>
+                <section class="simple-dice-list" id="simpleDiceList" aria-label="Einfache Würfel"></section>
             </div>
+        </main>
 
-            <div id="settingsOverlay" class="settings-overlay">
-                <div class="settings-panel">
-                    <button class="btn btn-wood" id="addAttackFunctionBtn">Angriffsfunktion hinzufügen</button>
-                    <button class="btn btn-wood" id="addDiceFunctionBtn">Würfelfunktion hinzufügen</button>
-                    <button class="btn btn-wood" id="addSimpleDiceBtn">Einfachen Würfel hinzufügen</button>
-                    <button class="btn btn-wood" id="toggleAnimationBtn" aria-pressed="true">Animation ausschalten</button>
-                    <button class="btn btn-danger" id="deleteModeBtn">Löschen</button>
-                </div>
-            </div>
-        </div>
+        <!-- Attack function -->
+        <form class="screen form-screen" id="attackForm" hidden>
+            <h2>Angriffsfunktion</h2>
+            <label class="input-group">Name:
+                <input type="text" name="name" placeholder="z.B. Schwerthieb" maxlength="26" required pattern=".*\S.*">
+            </label>
+            <label class="input-group">Angriffswurf:
+                <input type="text" name="attack" placeholder="z.B. 1w20+5" maxlength="20" required data-formula>
+            </label>
+            <label class="input-group">Schadenswurf:
+                <input type="text" name="damage" placeholder="z.B. 2w4+1" maxlength="20" required data-formula>
+                <small>Vorteil: 2w20h+5, Nachteil: 2w20n+5</small>
+            </label>
+            <button class="btn" type="submit">Hinzufügen</button>
+            <button class="btn" type="button" data-back>Abbrechen</button>
+        </form>
 
-        <!-- Add Dice Function Screen -->
-        <div class="screen" id="addDiceFunctionScreen">
-            <h2>Würfelfunktion hinzufügen</h2>
-            <div class="input-group">
-                <label for="functionName">Name:</label>
-                <input type="text" id="functionName" placeholder="z.B. Feuerball Schaden" maxlength="26">
-            </div>
-            <div class="input-group">
-                <label for="functionFormula">Formel:</label>
-                <input type="text" id="functionFormula" placeholder="z.B. 3w6+3" maxlength="20">
-                <small>Format: Kombinationen wie 3w6+3 oder 3w6+3+2w6-2</small>
-            </div>
-            <button class="btn btn-secondary" id="saveDiceFunctionBtn">Hinzufügen</button>
-            <button class="btn btn-secondary" id="cancelDiceFunctionBtn">Abbrechen</button>
-        </div>
+        <!-- Dice function -->
+        <form class="screen form-screen" id="diceForm" hidden>
+            <h2>Würfelfunktion</h2>
+            <label class="input-group">Name:
+                <input type="text" name="name" placeholder="z.B. Feuerball Schaden" maxlength="26" required pattern=".*\S.*">
+            </label>
+            <label class="input-group">Formel:
+                <input type="text" name="formula" placeholder="z.B. 3w6+3" maxlength="20" required data-formula>
+                <small>Kombinationen wie 3w6+3 oder 3w6+3+2w6-2. Beste 3 von 4: 4w6h3</small>
+            </label>
+            <button class="btn" type="submit">Hinzufügen</button>
+            <button class="btn" type="button" data-back>Abbrechen</button>
+        </form>
 
-        <!-- Add Simple Dice Screen -->
-        <div class="screen" id="addSimpleDiceScreen">
-            <h2>Einfachen Würfel hinzufügen</h2>
-            <div class="input-group">
-                <label for="diceType">Würfeltyp:</label>
-                <select id="diceType">
+        <!-- Simple dice -->
+        <form class="screen form-screen" id="simpleForm" hidden>
+            <h2>Einfacher Würfel</h2>
+            <label class="input-group">Würfeltyp:
+                <select name="diceType">
                     <option value="3">W3</option>
                     <option value="4">W4</option>
                     <option value="6">W6</option>
@@ -95,44 +100,44 @@
                     <option value="100">W100</option>
                     <option value="custom">Individueller Würfel</option>
                 </select>
-                <input type="text" id="customDiceSides" placeholder="Seitenanzahl" style="display:none;" inputmode="numeric" pattern="\d*" maxlength="5">
-            </div>
-            <button class="btn btn-secondary" id="saveSimpleDiceBtn">Hinzufügen</button>
-            <button class="btn btn-secondary" id="cancelSimpleDiceBtn">Abbrechen</button>
+                <input type="text" name="sides" placeholder="Seitenanzahl" inputmode="numeric" maxlength="5"
+                       pattern="[1-9][0-9]{0,4}" title="Eine Zahl von 1 bis 99999" required hidden disabled>
+            </label>
+            <button class="btn" type="submit">Hinzufügen</button>
+            <button class="btn" type="button" data-back>Abbrechen</button>
+        </form>
+
+        <div class="mode-bar" id="modeBar" hidden>
+            <span id="modeText"></span>
+            <button class="btn btn-small" id="modeCancelBtn">Abbrechen</button>
         </div>
-        <!-- Add Attack Function Screen -->
-        <div class="screen" id="addAttackFunctionScreen">
-            <h2><strong>Angriffsfunktion hinzufügen</strong></h2>
-            <div class="input-group">
-                <label for="attackFunctionName">Name:</label>
-                <input type="text" id="attackFunctionName" placeholder="z.B. Schwerthieb" maxlength="26">
-            </div>
-            <div class="input-group">
-                <label for="attackFunctionAttack">Angriffswurf:</label>
-                <input type="text" id="attackFunctionAttack" placeholder="z.B. 1w20+5" maxlength="20">
-            </div>
-            <div class="input-group">
-                <label for="attackFunctionDamage">Schadenswurf:</label>
-                <input type="text" id="attackFunctionDamage" placeholder="z.B. 2w4+1" maxlength="20">
-            </div>
-            <button class="btn btn-secondary" id="saveAttackFunctionBtn">Hinzufügen</button>
-            <button class="btn btn-secondary" id="cancelAttackFunctionBtn">Abbrechen</button>
-        </div>
-        <div id="diceAnimationOverlay" class="dice-animation-overlay" aria-hidden="true">
-            <div class="dice-animation-container">
-                <img id="diceAnimationImage" class="dice-animation-image" src="" alt="Würfel Animation">
-            </div>
-        </div>
-        <div id="lastRollBar" class="result-popup" style="display:none;">
-            <div class="popup-content">
-                <div id="lastRollText"></div>
-                <button class="btn btn-secondary" id="closeResultBtn">Schliessen</button>
-            </div>
+
+        <div class="toast" id="toast" role="status" hidden>
+            <span id="toastText"></span>
+            <button id="toastUndoBtn">Rückgängig</button>
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <dialog class="settings-dialog" id="settingsDialog" aria-label="Einstellungen">
+        <div class="settings-panel">
+            <button class="btn" data-add="attackFunctions">Angriffsfunktion hinzufügen</button>
+            <button class="btn" data-add="diceFunctions">Würfelfunktion hinzufügen</button>
+            <button class="btn" data-add="simpleDices">Einfachen Würfel hinzufügen</button>
+            <button class="btn" data-mode="edit">Bearbeiten</button>
+            <button class="btn" data-mode="delete">Löschen</button>
+            <button class="btn" id="toggleAnimationBtn" aria-pressed="true">Animation ausschalten</button>
+        </div>
+    </dialog>
+
+    <dialog class="result-dialog" id="resultDialog" aria-label="Wurfergebnis">
+        <div class="result-content">
+            <div id="resultText"></div>
+            <ul class="roll-history" id="rollHistory" aria-label="Vorherige Würfe"></ul>
+            <form method="dialog">
+                <button class="btn">Schliessen</button>
+            </form>
+        </div>
+        <img class="dice-animation" id="diceAnimation" src="img/dice.webp" alt="" hidden>
+    </dialog>
 </body>
 </html>
-
-
