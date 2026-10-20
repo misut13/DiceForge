@@ -1,4 +1,4 @@
-﻿import { parseFormula, rollFormula, normalizeProfiles, mergeProfiles, moveItem } from './model.js';
+﻿import { parseFormula, rollFormula, normalizeProfiles, mergeProfiles, moveItem } from './model.js?v=dev';
 
 const STANDARD_DICE = [3, 4, 6, 8, 10, 12, 20, 100];
 const SOUNDS = {

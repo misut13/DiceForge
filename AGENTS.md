@@ -8,7 +8,7 @@ Guidance for Claude Code and other coding agents working in this repository.
 DiceForge is a pen-and-paper dice roller for the phone (German UI). Players create character profiles with
 attack functions (attack + damage roll), dice functions (`3w6+3`) and simple dice, then tap to roll.
 
-- Live: https://misut13.github.io/DiceForge/ (GitHub Pages, deployed from `main` on every push)
+- Live: https://misut13.github.io/DiceForge/ (GitHub Pages, deployed by the CI workflow after the tests pass)
 - Tag `original`: the GPT/Codex version before the 2026-10 restructuring
 
 ## Commands
@@ -21,7 +21,9 @@ npm run serve        # http://localhost:8000, ES modules do not work over file:/
 npx playwright install chromium webkit   # once, before the first e2e run
 ```
 
-CI (`.github/workflows/test.yml`) runs both suites on every push and pull request.
+CI (`.github/workflows/ci.yml`) runs both suites on every push and pull request. On `main` it then deploys to
+GitHub Pages: only the app files (`index.html`, `*.js` without tests, `styles.css`, `img/`, `sounds/`) and with
+`?v=dev` replaced by the commit hash.
 
 ## Architecture
 
@@ -41,6 +43,9 @@ CI (`.github/workflows/test.yml`) runs both suites on every push and pull reques
 - **Storage** lives in `localStorage` under `profiles` and `appSettings`. Loaded data and import files go through
   `normalizeProfiles()`.
 - **Rendering** builds DOM nodes with the `el()` helper and `textContent`.
+- **Cache busting:** every local script, stylesheet and module import is referenced with `?v=dev`
+  (`assets.test.js` enforces it). GitHub Pages caches files for 10 minutes; without the version stamp a new
+  `index.html` can run with an old `app.js`. A new JS module must also be added to the deploy step's file list.
 
 ## Test-driven development (mandatory)
 
@@ -114,4 +119,4 @@ Test quality:
 - [ ] UI changes checked at phone, tablet and laptop size
 - [ ] `README.md` updated for user-visible changes (README is for humans, this file for agents)
 - [ ] After changing this file: `cp CLAUDE.md AGENTS.md`
-- [ ] After pushing to `main`: wait for the Pages build and check https://misut13.github.io/DiceForge/
+- [ ] After pushing to `main`: wait for the CI run (tests and deploy) and check https://misut13.github.io/DiceForge/
