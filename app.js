@@ -18,7 +18,7 @@ const FORMS = {
 const $ = id => document.getElementById(id);
 
 let profiles = [];
-let settings = { animationEnabled: true, soundEnabled: true };
+let settings = { animationEnabled: true, soundEnabled: true, quickRollEnabled: false };
 let mode = null; // null | 'edit' | 'move' | 'delete'
 let moveSource = null; // { list, index } picked first in move mode
 let lastRoll = null;
@@ -127,6 +127,11 @@ function showScreen(id, title, subtitle = '') {
     $('headerTitle').textContent = title;
     $('headerTitle').classList.toggle('long', title.length > 14);
     $('headerSubtitle').textContent = subtitle;
+    updateQuickRoll();
+}
+
+function updateQuickRoll() {
+    $('quickRollForm').hidden = !(settings.quickRollEnabled && !$('profileScreen').hidden);
 }
 
 // ---------- Rendering ----------
@@ -443,9 +448,16 @@ function showMoveSelection() {
     if (mode === 'move') $('modeText').textContent = moveSource ? 'Zielposition antippen' : MODE_TEXT.move;
 }
 
+// [button id, setting, label when on, label when off]
+const SETTING_BUTTONS = [
+    ['toggleAnimationBtn', 'animationEnabled', 'Animation ausschalten', 'Animation einschalten'],
+    ['toggleSoundBtn', 'soundEnabled', 'Sound ausschalten', 'Sound einschalten'],
+    ['toggleQuickRollBtn', 'quickRollEnabled', 'Freien Wurf ausblenden', 'Freien Wurf einblenden']
+];
+
 function updateSettingsButtons() {
-    for (const [id, key, label] of [['toggleAnimationBtn', 'animationEnabled', 'Animation'], ['toggleSoundBtn', 'soundEnabled', 'Sound']]) {
-        $(id).textContent = `${label} ${settings[key] ? 'ausschalten' : 'einschalten'}`;
+    for (const [id, key, on, off] of SETTING_BUTTONS) {
+        $(id).textContent = settings[key] ? on : off;
         $(id).setAttribute('aria-pressed', String(settings[key]));
     }
 }
@@ -475,6 +487,7 @@ function onSettingsClick(event) {
         settings[button.dataset.setting] = !settings[button.dataset.setting];
         saveSettings();
         updateSettingsButtons();
+        updateQuickRoll();
     }
 }
 
@@ -506,6 +519,7 @@ function init() {
     const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
     settings.animationEnabled = storedSettings.animationEnabled ?? !reducedMotion;
     settings.soundEnabled = storedSettings.soundEnabled ?? true;
+    settings.quickRollEnabled = storedSettings.quickRollEnabled ?? false;
     updateSettingsButtons();
     keepScreenOn();
     document.addEventListener('visibilitychange', keepScreenOn);

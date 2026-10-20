@@ -580,7 +580,7 @@ test.describe('Bildschirm', () => {
 
 test.describe('Freier Wurf', () => {
     test.beforeEach(async ({ page }) => {
-        await open(page, { profiles: [gandalf()] });
+        await open(page, { profiles: [gandalf()], appSettings: { animationEnabled: false, quickRollEnabled: true } });
         await openProfile(page);
     });
 
@@ -600,6 +600,53 @@ test.describe('Freier Wurf', () => {
         await page.click('#quickRollForm [type=submit]');
         expect(await page.locator('#quickRollForm [name=formula]').evaluate(i => i.validationMessage)).toMatch(/^Ungültige Formel/);
         await expect(page.locator('#resultDialog')).toBeHidden();
+    });
+});
+
+test.describe('Freier Wurf einblenden', () => {
+    const quickRoll = page => page.locator('#quickRollForm');
+
+    test('Standardmässig ausgeblendet', async ({ page }) => {
+        await open(page, { profiles: [gandalf()] });
+        await openProfile(page);
+        await expect(quickRoll(page)).toBeHidden();
+    });
+
+    test('Lässt sich einblenden, sitzt am unteren Rand, bleibt nach Neuladen', async ({ page }) => {
+        await open(page, { profiles: [gandalf()] });
+        await openProfile(page);
+        await openSettings(page);
+        await expect(page.locator('#toggleQuickRollBtn')).toHaveText('Freien Wurf einblenden');
+        await page.click('#toggleQuickRollBtn');
+        await expect(page.locator('#toggleQuickRollBtn')).toHaveText('Freien Wurf ausblenden');
+        await page.keyboard.press('Escape');
+        await expect(quickRoll(page)).toBeVisible();
+        const box = await quickRoll(page).boundingBox();
+        const viewport = page.viewportSize();
+        expect(box.y + box.height).toBeGreaterThan(viewport.height - 40);
+        await page.reload();
+        await expect(quickRoll(page)).toBeVisible();
+        await openSettings(page);
+        await page.click('#toggleQuickRollBtn');
+        await page.keyboard.press('Escape');
+        await expect(quickRoll(page)).toBeHidden();
+    });
+
+    test('Nur im Profil sichtbar, nicht auf der Startseite', async ({ page }) => {
+        await open(page, { profiles: [gandalf()], appSettings: { animationEnabled: false, quickRollEnabled: true } });
+        await expect(quickRoll(page)).toBeHidden();
+        await openProfile(page);
+        await expect(quickRoll(page)).toBeVisible();
+    });
+
+    test('Modusleiste überdeckt das Feld nicht', async ({ page }) => {
+        await open(page, { profiles: [gandalf()], appSettings: { animationEnabled: false, quickRollEnabled: true } });
+        await openProfile(page);
+        await openSettings(page);
+        await page.click('[data-mode=delete]');
+        const bar = await page.locator('#modeBar').boundingBox();
+        const field = await quickRoll(page).boundingBox();
+        expect(bar.y + bar.height).toBeLessThanOrEqual(field.y);
     });
 });
 

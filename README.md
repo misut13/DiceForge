@@ -15,9 +15,10 @@ Eine natürliche 20 oder 1 auf einem W20 wird im Ergebnis hervorgehoben.
 
 ## Bedienung
 
-Im Profil würfelt ein Tipp auf eine Karte. Oben lässt sich eine Formel frei würfeln, ohne sie zu speichern.
+Im Profil würfelt ein Tipp auf eine Karte. Wer will, blendet in den Einstellungen unten ein Feld ein,
+um eine Formel frei zu würfeln, ohne sie zu speichern.
 Über das Zahnrad: Funktionen und Würfel hinzufügen, bearbeiten, verschieben (Element antippen, dann
-Zielposition) oder löschen, das Profil umbenennen sowie Animation und Sound ein- und ausschalten.
+Zielposition) oder löschen, das Profil umbenennen sowie Animation, Sound und den freien Wurf ein- und ausschalten.
 Solange die App offen ist, bleibt der Bildschirm an.
 
 ## Daten
