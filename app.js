@@ -8,11 +8,11 @@ const SOUNDS = {
 const ANIMATION_MS = 2000;
 const TOAST_MS = 6000;
 
-// One form per item list of a profile
+// One form per kind of entry. Attack and dice functions share the profile's functions list.
 const FORMS = {
-    attackFunctions: { id: 'attackForm', title: 'Angriffsfunktion', add: 'Neue Funktion hinzufügen', edit: 'Funktion bearbeiten' },
-    diceFunctions: { id: 'diceForm', title: 'Würfelfunktion', add: 'Neue Funktion hinzufügen', edit: 'Funktion bearbeiten' },
-    simpleDices: { id: 'simpleForm', title: 'Einfacher Würfel', add: 'Neuen Würfel hinzufügen', edit: 'Würfel bearbeiten' }
+    attack: { id: 'attackForm', list: 'functions', title: 'Angriffsfunktion', add: 'Neue Funktion hinzufügen', edit: 'Funktion bearbeiten' },
+    dice: { id: 'diceForm', list: 'functions', title: 'Würfelfunktion', add: 'Neue Funktion hinzufügen', edit: 'Funktion bearbeiten' },
+    simple: { id: 'simpleForm', list: 'simpleDices', title: 'Einfacher Würfel', add: 'Neuen Würfel hinzufügen', edit: 'Würfel bearbeiten' }
 };
 
 const $ = id => document.getElementById(id);
@@ -57,6 +57,7 @@ function saveSettings() {
 // Every screen and the result popup are history entries, so the browser and
 // Android back button behave like the in-app back button.
 // State: { view: 'list' | 'create' | 'profile' | 'form', profileId, form, index, result, depth }
+// form is a FORMS key, index the entry's position in that form's list.
 // 'create' with a profileId renames that profile.
 
 function navigate(state, replace = false) {
@@ -151,7 +152,7 @@ function nameSizeClass(name) {
 function renderProfileList() {
     $('emptyState').hidden = profiles.length > 0;
     $('profileList').replaceChildren(...profiles.map(profile => {
-        const functionCount = profile.attackFunctions.length + profile.diceFunctions.length;
+        const functionCount = profile.functions.length;
         const open = el('button', 'profile-open',
             el('span', 'profile-name', profile.name),
             el('span', 'profile-stats',
@@ -176,17 +177,14 @@ function itemCard(list, index, className, ...children) {
 }
 
 function renderProfile(profile) {
-    const functions = [
-        ...profile.attackFunctions.map((f, i) => itemCard('attackFunctions', i, 'function-card',
-            el('span', nameSizeClass(f.name), f.name),
+    const functions = profile.functions.map((f, i) => itemCard('functions', i, 'function-card',
+        el('span', nameSizeClass(f.name), f.name),
+        f.type === 'attack'
             // Parts wrap onto a second line on narrow cards; CSS then clips the separator
-            el('span', 'formula formula--attack', el('span', 'formula-parts',
+            ? el('span', 'formula formula--attack', el('span', 'formula-parts',
                 el('span', 'formula-part', `A: ${f.attack}`),
-                el('span', 'formula-part', `S: ${f.damage}`))))),
-        ...profile.diceFunctions.map((f, i) => itemCard('diceFunctions', i, 'function-card',
-            el('span', nameSizeClass(f.name), f.name),
-            el('span', 'formula', f.formula)))
-    ];
+                el('span', 'formula-part', `S: ${f.damage}`)))
+            : el('span', 'formula', f.formula)));
     const dice = profile.simpleDices.map((d, i) => itemCard('simpleDices', i, 'dice-card', `W${d.sides}`));
 
     $('functionList').replaceChildren(...(functions.length ? functions : [el('p', 'empty-hint', 'Es sind keine Funktionen definiert')]));
@@ -231,8 +229,7 @@ function saveProfile(event) {
     profiles.push({
         id: crypto.randomUUID(),
         name,
-        attackFunctions: [],
-        diceFunctions: [],
+        functions: [],
         simpleDices: STANDARD_DICE.map(sides => ({ sides }))
     });
     saveProfiles();
@@ -257,7 +254,8 @@ function removeWithUndo(list, index, message) {
 }
 
 function exportProfiles() {
-    const data = JSON.stringify({ app: 'DiceForge', version: 1, profiles }, null, 2);
+    // Version 2: attack and dice functions in one functions list
+    const data = JSON.stringify({ app: 'DiceForge', version: 2, profiles }, null, 2);
     const link = document.createElement('a');
     link.href = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
     link.download = `diceforge-${new Date().toISOString().slice(0, 10)}.json`;
@@ -290,15 +288,20 @@ function onItemClick(list, index) {
     if (mode === 'delete') {
         removeWithUndo(profile[list], index, `"${item.name ?? `W${item.sides}`}" gelöscht`);
     } else if (mode === 'edit') {
-        navigate({ view: 'form', profileId: profile.id, form: list, index });
+        navigate({ view: 'form', profileId: profile.id, form: list === 'simpleDices' ? 'simple' : item.type, index });
     } else {
-        roll(item, list);
+        roll(item);
     }
 }
 
-function showForm(profile, list, index) {
-    const config = FORMS[list];
-    const item = index != null ? profile[list][index] : null;
+function showForm(profile, kind, index) {
+    const config = FORMS[kind];
+    if (!config) {
+        // History entry from an older version of the app
+        navigate({ view: 'profile', profileId: profile.id }, true);
+        return;
+    }
+    const item = index != null ? profile[config.list][index] : null;
     showScreen(config.id, config.title, item ? config.edit : config.add);
 
     const form = $(config.id);
@@ -306,14 +309,14 @@ function showForm(profile, list, index) {
     form.querySelectorAll('[data-formula]').forEach(input => input.setCustomValidity(''));
     form.querySelector('[type=submit]').textContent = item ? 'Speichern' : 'Hinzufügen';
 
-    if (list === 'simpleDices') {
+    if (kind === 'simple') {
         const sides = item?.sides ?? 6;
         const standard = STANDARD_DICE.includes(sides);
         form.elements.namedItem('diceType').value = standard ? String(sides) : 'custom';
         form.elements.namedItem('sides').value = standard ? '' : sides;
         toggleCustomSides(form);
     } else if (item) {
-        Object.entries(item).forEach(([key, value]) => {
+        Object.entries(item).filter(([key]) => key !== 'type').forEach(([key, value]) => {
             form.elements.namedItem(key).value = value;
         });
     }
@@ -338,12 +341,12 @@ function saveItem(event) {
     const form = event.target;
     if (!validate(form)) return;
 
-    const { form: list, index } = history.state;
-    const items = currentProfile()[list];
+    const { form: kind, index } = history.state;
+    const items = currentProfile()[FORMS[kind].list];
     const data = Object.fromEntries([...new FormData(form)].map(([key, value]) => [key, value.trim()]));
-    const item = list === 'simpleDices'
+    const item = kind === 'simple'
         ? { sides: Number(data.diceType === 'custom' ? data.sides : data.diceType) }
-        : data;
+        : { type: kind, ...data };
 
     if (index != null && items[index]) {
         items[index] = item;
@@ -356,11 +359,14 @@ function saveItem(event) {
 
 // ---------- Rolling ----------
 
-function roll(item, list) {
-    const formulas = list === 'attackFunctions'
-        ? [['Angriff', item.attack], ['Schaden', item.damage]]
-        : [[null, list === 'diceFunctions' ? item.formula : `1w${item.sides}`]];
-    rollFormulas(item.name ?? `W${item.sides}`, formulas, list === 'simpleDices' ? SOUNDS.single : SOUNDS.multi);
+function roll(item) {
+    if (item.type === 'attack') {
+        rollFormulas(item.name, [['Angriff', item.attack], ['Schaden', item.damage]], SOUNDS.multi);
+    } else if (item.type === 'dice') {
+        rollFormulas(item.name, [[null, item.formula]], SOUNDS.multi);
+    } else {
+        rollFormulas(`W${item.sides}`, [[null, `1w${item.sides}`]], SOUNDS.single);
+    }
 }
 
 function quickRoll(event) {

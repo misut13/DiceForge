@@ -11,15 +11,17 @@ const dice = (...sides) => sides.map(s => ({ sides: s }));
 const gandalf = (overrides = {}) => ({
     id: 'gandalf',
     name: 'Würfelkönig Gandalf',
-    attackFunctions: [{ name: 'Schwert', attack: '1w20+5', damage: '2w6+3' }],
-    diceFunctions: [{ name: 'Attribut', formula: '4w6h3' }],
+    functions: [
+        { type: 'attack', name: 'Schwert', attack: '1w20+5', damage: '2w6+3' },
+        { type: 'dice', name: 'Attribut', formula: '4w6h3' }
+    ],
     simpleDices: dice(...STANDARD),
     ...overrides
 });
-const empty = gandalf({ attackFunctions: [], diceFunctions: [] });
-const bilbo = { id: 'bilbo', name: 'Bilbo', attackFunctions: [], diceFunctions: [], simpleDices: dice(...STANDARD) };
-const backup = [gandalf({ attackFunctions: [{ name: 'Schwert', attack: '1w20+5', damage: '1w8' }] }), bilbo];
-const exportFormat = profiles => JSON.stringify({ app: 'DiceForge', version: 1, profiles });
+const empty = gandalf({ functions: [] });
+const bilbo = { id: 'bilbo', name: 'Bilbo', functions: [], simpleDices: dice(...STANDARD) };
+const backup = [gandalf({ functions: [{ type: 'attack', name: 'Schwert', attack: '1w20+5', damage: '1w8' }] }), bilbo];
+const exportFormat = profiles => JSON.stringify({ app: 'DiceForge', version: 2, profiles });
 
 // ---------- Helpers ----------
 
@@ -127,7 +129,7 @@ test.describe('Profile', () => {
         await open(page);
         const { data, filename } = await exportFile(page, 'empty');
         expect(filename).toMatch(/^diceforge-\d{4}-\d{2}-\d{2}\.json$/);
-        expect(data).toEqual({ app: 'DiceForge', version: 1, profiles: [] });
+        expect(data).toEqual({ app: 'DiceForge', version: 2, profiles: [] });
     });
 
     test('Profil anlegen: leer, nur Leerzeichen und >24 Zeichen werden abgefangen', async ({ page }) => {
@@ -194,7 +196,7 @@ test.describe('Hinzufügen', () => {
         await open(page, { profiles: [empty] });
         await openProfile(page);
         await openSettings(page);
-        await page.click('[data-add=attackFunctions]');
+        await page.click('[data-add=attack]');
         await expect(page.locator('#headerSubtitle')).toHaveText('Neue Funktion hinzufügen');
         await page.fill('#attackForm [name=name]', 'Schwert');
         await page.fill('#attackForm [name=attack]', 'abc');
@@ -205,14 +207,14 @@ test.describe('Hinzufügen', () => {
         await page.fill('#attackForm [name=attack]', '1w20+5');
         await page.click('#attackForm [type=submit]');
         await expect(page.locator('#profileScreen')).toBeVisible();
-        await expect.poll(() => cards(page, 'attackFunctions')).toEqual(['Schwert A: 1w20+5 S: 2w6+3']);
+        await expect.poll(() => cards(page, 'functions')).toEqual(['Schwert A: 1w20+5 S: 2w6+3']);
     });
 
     test('Würfelfunktion: 101w6 abgelehnt, 4w6h3 gespeichert', async ({ page }) => {
         await open(page, { profiles: [empty] });
         await openProfile(page);
         await openSettings(page);
-        await page.click('[data-add=diceFunctions]');
+        await page.click('[data-add=dice]');
         await page.fill('#diceForm [name=name]', 'Attribut');
         await page.fill('#diceForm [name=formula]', '101w6');
         await page.click('#diceForm [type=submit]');
@@ -220,14 +222,14 @@ test.describe('Hinzufügen', () => {
         await page.fill('#diceForm [name=formula]', '4w6h3');
         await page.click('#diceForm [type=submit]');
         await expect(page.locator('#profileScreen')).toBeVisible();
-        await expect.poll(() => cards(page, 'diceFunctions')).toEqual(['Attribut 4w6h3']);
+        await expect.poll(() => cards(page, 'functions')).toEqual(['Attribut 4w6h3']);
     });
 
     test('Eigener Würfel: Feld nur bei "Individuell", 0 und Buchstaben abgelehnt, W7 gespeichert', async ({ page }) => {
         await open(page, { profiles: [empty] });
         await openProfile(page);
         await openSettings(page);
-        await page.click('[data-add=simpleDices]');
+        await page.click('[data-add=simple]');
         const sides = '#simpleForm [name=sides]';
         await expect(page.locator('#simpleForm')).toBeVisible();
         await expect(page.locator(sides)).toBeHidden();
@@ -249,7 +251,7 @@ test.describe('Hinzufügen', () => {
         await open(page, { profiles: [empty] });
         await openProfile(page);
         await openSettings(page);
-        await page.click('[data-add=simpleDices]');
+        await page.click('[data-add=simple]');
         await page.selectOption('#simpleForm [name=diceType]', '20');
         await page.click('#simpleForm [type=submit]');
         await expect(page.locator('#profileScreen')).toBeVisible();
@@ -275,7 +277,7 @@ test.describe('Würfeln', () => {
     });
 
     test('Angriff würfeln: Summen stimmen, natürliche 1, schliessen per Escape', async ({ page }) => {
-        await roll(page, 'attackFunctions', 0, [0, 0.5, 0.5]);
+        await roll(page, 'functions', 0, [0, 0.5, 0.5]);
         await expect.poll(() => resultLines(page)).toEqual([
             { label: 'Angriff', total: '6', detail: '1w20 [1] +5' },
             { label: 'Schaden', total: '11', detail: '2w6 [4, 4] +3' }
@@ -287,7 +289,7 @@ test.describe('Würfeln', () => {
     });
 
     test('4w6h3 würfeln: bester 3 von 4, schliessen per Klick daneben', async ({ page }) => {
-        await roll(page, 'diceFunctions', 0, [0, 0.5, 0.999, 0.5]);
+        await roll(page, 'functions', 1, [0, 0.5, 0.999, 0.5]);
         await expect.poll(() => resultLines(page)).toEqual([{ label: null, total: '14', detail: '4w6h3 [(1), 4, 6, 4]' }]);
         await page.mouse.click(3, 3);
         await expect(page.locator('#resultDialog')).toBeHidden();
@@ -302,7 +304,7 @@ test.describe('Würfeln', () => {
     });
 
     test('Endsumme ist mindestens doppelt so gross wie die Herleitung', async ({ page }) => {
-        await roll(page, 'attackFunctions', 0, [0, 0.5, 0.5]);
+        await roll(page, 'functions', 0, [0, 0.5, 0.5]);
         const fontSize = selector => page.locator(selector).first().evaluate(e => parseFloat(getComputedStyle(e).fontSize));
         await expect(page.locator('#resultText .roll-total')).toHaveText(['6', '11']);
         expect(await fontSize('#resultText .roll-total')).toBeGreaterThanOrEqual(2 * await fontSize('#resultText .roll-detail'));
@@ -310,16 +312,16 @@ test.describe('Würfeln', () => {
     });
 
     test('Ergebnis zeigt nur den aktuellen Wurf, keine früheren', async ({ page }) => {
-        await roll(page, 'attackFunctions', 0, [0, 0.5, 0.5]);
+        await roll(page, 'functions', 0, [0, 0.5, 0.5]);
         await closeResult(page);
-        await roll(page, 'diceFunctions', 0, [0, 0.5, 0.999, 0.5]);
+        await roll(page, 'functions', 1, [0, 0.5, 0.999, 0.5]);
         await expect(page.locator('#resultText')).toContainText('Attribut');
         await expect(page.locator('#resultDialog')).not.toContainText('Schwert');
         await closeResult(page);
     });
 
     test('Sounds laden (200, audio/*)', async ({ page }) => {
-        for (const [list, pattern] of [['simpleDices', /\/sounds\/dice\d\.m4a/], ['attackFunctions', /\/sounds\/multidice\d\.m4a/]]) {
+        for (const [list, pattern] of [['simpleDices', /\/sounds\/dice\d\.m4a/], ['functions', /\/sounds\/multidice\d\.m4a/]]) {
             // Linux WebKit loads media through GStreamer, its response reports status 0,
             // so check the request the app makes and fetch the file separately
             const request = page.waitForRequest(r => pattern.test(r.url()));
@@ -341,34 +343,33 @@ test.describe('Bearbeiten', () => {
         await page.click('[data-mode=edit]');
         await expect(page.locator('#modeBar')).toBeVisible();
         await expect(page.locator('#modeText')).toHaveText(/Bearbeiten/);
-        await page.click('[data-list=attackFunctions][data-index="0"]');
+        await page.click('[data-list=functions][data-index="0"]');
         await expect(page.locator('#headerSubtitle')).toHaveText('Funktion bearbeiten');
         await expect(page.locator('#attackForm [type=submit]')).toHaveText('Speichern');
         await expect(page.locator('#attackForm [name=attack]')).toHaveValue('1w20+5');
         await page.fill('#attackForm [name=damage]', '1w8');
         await page.click('#attackForm [type=submit]');
         await expect(page.locator('#profileScreen')).toBeVisible();
-        await expect.poll(() => cards(page, 'attackFunctions')).toEqual(['Schwert A: 1w20+5 S: 1w8']);
+        await expect.poll(() => cards(page, 'functions')).toEqual(['Schwert A: 1w20+5 S: 1w8', 'Attribut 4w6h3']);
     });
 
     test('Hinzugefügtes und Bearbeitetes überlebt Neuladen', async ({ page }) => {
         await open(page, { profiles: [gandalf()] });
         await openProfile(page);
         await openSettings(page);
-        await page.click('[data-add=diceFunctions]');
+        await page.click('[data-add=dice]');
         await page.fill('#diceForm [name=name]', 'Initiative');
         await page.fill('#diceForm [name=formula]', '1w20+2');
         await page.click('#diceForm [type=submit]');
         await expect(page.locator('#profileScreen')).toBeVisible();
         await openSettings(page);
         await page.click('[data-mode=edit]');
-        await page.click('[data-list=attackFunctions][data-index="0"]');
+        await page.click('[data-list=functions][data-index="0"]');
         await page.fill('#attackForm [name=damage]', '1w8');
         await page.click('#attackForm [type=submit]');
         await expect(page.locator('#profileScreen')).toBeVisible();
         await page.reload();
-        await expect.poll(() => cards(page, 'diceFunctions')).toEqual(['Attribut 4w6h3', 'Initiative 1w20+2']);
-        await expect.poll(() => cards(page, 'attackFunctions')).toEqual(['Schwert A: 1w20+5 S: 1w8']);
+        await expect.poll(() => cards(page, 'functions')).toEqual(['Schwert A: 1w20+5 S: 1w8', 'Attribut 4w6h3', 'Initiative 1w20+2']);
     });
 
     test('Bearbeiten: W7 auf Standard W12, W3 auf eigenen W5', async ({ page }) => {
@@ -400,7 +401,7 @@ test.describe('Bearbeiten', () => {
         await openProfile(page);
         await openSettings(page);
         await page.click('[data-mode=edit]');
-        await page.click('[data-list=diceFunctions][data-index="0"]');
+        await page.click('[data-list=functions][data-index="1"]');
         await expect(page.locator('#diceForm')).toBeVisible();
         await page.reload();
         await expect(page.locator('#diceForm')).toBeVisible();
@@ -453,12 +454,11 @@ test.describe('Löschen', () => {
     test('Löschen ohne Rückgängig bleibt gelöscht (auch nach Neuladen)', async ({ page }) => {
         await openSettings(page);
         await page.click('[data-mode=delete]');
-        await page.click('[data-list=diceFunctions][data-index="0"]');
-        await expect.poll(() => cards(page, 'diceFunctions')).toEqual([]);
+        await page.click('[data-list=functions][data-index="1"]');
+        await expect.poll(() => cards(page, 'functions')).toEqual(['Schwert A: 1w20+5 S: 2w6+3']);
         await page.reload();
         await expect(page.locator('#profileScreen')).toBeVisible();
-        await expect.poll(() => cards(page, 'attackFunctions')).toHaveLength(1);
-        expect(await cards(page, 'diceFunctions')).toEqual([]);
+        await expect.poll(() => cards(page, 'functions')).toEqual(['Schwert A: 1w20+5 S: 2w6+3']);
     });
 
     test('Löschmodus endet beim Verlassen des Profils', async ({ page }) => {
@@ -535,7 +535,7 @@ test('Browser zurück/vor durch Bildschirme', async ({ page }) => {
     await open(page, { profiles: [gandalf()] });
     await openProfile(page);
     await openSettings(page);
-    await page.click('[data-add=diceFunctions]');
+    await page.click('[data-add=dice]');
     await expect(page.locator('#diceForm')).toBeVisible();
     await page.goBack();
     await expect(page.locator('#profileScreen')).toBeVisible();
@@ -657,7 +657,7 @@ test.describe('Freier Wurf einblenden', () => {
 });
 
 test.describe('Umbenennen und Verschieben', () => {
-    const abc = () => gandalf({ attackFunctions: [], diceFunctions: ['A', 'B', 'C'].map(name => ({ name, formula: '1w6' })) });
+    const abc = () => gandalf({ functions: ['A', 'B', 'C'].map(name => ({ type: 'dice', name, formula: '1w6' })) });
 
     test('Profil umbenennen ändert den Namen, legt kein neues an', async ({ page }) => {
         await open(page, { profiles: [gandalf()] });
@@ -702,31 +702,41 @@ test.describe('Umbenennen und Verschieben', () => {
         await openProfile(page);
         await expect(page.locator('.drag-handle').first()).toBeHidden();
         await editMode(page);
-        await expect(page.locator('[data-list=diceFunctions] .drag-handle')).toHaveCount(3);
-        await expect(page.locator('[data-list=diceFunctions][data-index="0"] .drag-handle')).toBeVisible();
+        await expect(page.locator('[data-list=functions] .drag-handle')).toHaveCount(3);
+        await expect(page.locator('[data-list=functions][data-index="0"] .drag-handle')).toBeVisible();
     });
 
     test('Ziehen am Griff verschiebt, Modus bleibt, Reihenfolge bleibt nach Neuladen', async ({ page }) => {
         await open(page, { profiles: [abc()] });
         await openProfile(page);
         await editMode(page);
-        await dragTo(page, '[data-list=diceFunctions][data-index="2"]', '[data-list=diceFunctions][data-index="0"]');
-        await expect.poll(() => cards(page, 'diceFunctions')).toEqual(['C 1w6', 'A 1w6', 'B 1w6']);
+        await dragTo(page, '[data-list=functions][data-index="2"]', '[data-list=functions][data-index="0"]');
+        await expect.poll(() => cards(page, 'functions')).toEqual(['C 1w6', 'A 1w6', 'B 1w6']);
         await expect(page.locator('#modeBar')).toBeVisible();
         await expect(page.locator('#profileScreen')).toBeVisible();
         await dragTo(page, '[data-list=simpleDices][data-index="0"]', '[data-list=simpleDices][data-index="7"]');
         await expect.poll(() => cards(page, 'simpleDices')).toEqual([4, 6, 8, 10, 12, 20, 100, 3].map(n => `W${n}`));
         await page.reload();
-        await expect.poll(() => cards(page, 'diceFunctions')).toEqual(['C 1w6', 'A 1w6', 'B 1w6']);
+        await expect.poll(() => cards(page, 'functions')).toEqual(['C 1w6', 'A 1w6', 'B 1w6']);
         await expect.poll(() => cards(page, 'simpleDices')).toEqual([4, 6, 8, 10, 12, 20, 100, 3].map(n => `W${n}`));
+    });
+
+    test('Angriff und Würfelfunktion lassen sich gegeneinander tauschen', async ({ page }) => {
+        await open(page, { profiles: [gandalf()] });
+        await openProfile(page);
+        await editMode(page);
+        await dragTo(page, '[data-list=functions][data-index="1"]', '[data-list=functions][data-index="0"]');
+        await expect.poll(() => cards(page, 'functions')).toEqual(['Attribut 4w6h3', 'Schwert A: 1w20+5 S: 2w6+3']);
+        await page.reload();
+        await expect.poll(() => cards(page, 'functions')).toEqual(['Attribut 4w6h3', 'Schwert A: 1w20+5 S: 2w6+3']);
     });
 
     test('Ziehen auf eine andere Art von Eintrag ändert nichts', async ({ page }) => {
         await open(page, { profiles: [abc()] });
         await openProfile(page);
         await editMode(page);
-        await dragTo(page, '[data-list=diceFunctions][data-index="0"]', '[data-list=simpleDices][data-index="0"]');
-        await expect.poll(() => cards(page, 'diceFunctions')).toEqual(['A 1w6', 'B 1w6', 'C 1w6']);
+        await dragTo(page, '[data-list=functions][data-index="0"]', '[data-list=simpleDices][data-index="0"]');
+        await expect.poll(() => cards(page, 'functions')).toEqual(['A 1w6', 'B 1w6', 'C 1w6']);
         await expect.poll(() => cards(page, 'simpleDices')).toEqual(STANDARD.map(n => `W${n}`));
     });
 
@@ -734,9 +744,9 @@ test.describe('Umbenennen und Verschieben', () => {
         await open(page, { profiles: [abc()] });
         await openProfile(page);
         await editMode(page);
-        await page.click('[data-list=diceFunctions][data-index="1"] .drag-handle');
+        await page.click('[data-list=functions][data-index="1"] .drag-handle');
         await expect(page.locator('#profileScreen')).toBeVisible();
-        await page.click('[data-list=diceFunctions][data-index="1"] .item-name');
+        await page.click('[data-list=functions][data-index="1"] .item-name');
         await expect(page.locator('#diceForm')).toBeVisible();
         await expect(page.locator('#diceForm [name=name]')).toHaveValue('B');
     });
@@ -749,7 +759,7 @@ test.describe('Export und Import', () => {
         const { data, filename } = await exportFile(page, 'backup');
         expect(filename).toMatch(/^diceforge-\d{4}-\d{2}-\d{2}\.json$/);
         expect(data.app).toBe('DiceForge');
-        expect(data.version).toBe(1);
+        expect(data.version).toBe(2);
         expect(data.profiles).toEqual(await stored(page));
         expect(data.profiles).toHaveLength(2);
     });
@@ -766,7 +776,7 @@ test.describe('Export und Import', () => {
         await expect(page.locator('#toastText')).toHaveText('2 Profil(e) importiert.');
         expect(await stored(page)).toEqual(exported.data.profiles);
         await openProfile(page);
-        await roll(page, 'attackFunctions', 0, [0.999, 0.999]);
+        await roll(page, 'functions', 0, [0.999, 0.999]);
         await expect.poll(() => resultLines(page)).toEqual([
             { label: 'Angriff', total: '25', detail: '1w20 [20] +5' },
             { label: 'Schaden', total: '8', detail: '1w8 [8]' }
@@ -790,7 +800,7 @@ test.describe('Export und Import', () => {
         await importJson(page, exportFormat(changed));
         const s = await stored(page);
         expect(s.map(p => p.name)).toEqual(['Umbenannt', 'Bilbo', 'Neu']);
-        expect(s[2]).toEqual({ id: 'neu-1', name: 'Neu', attackFunctions: [], diceFunctions: [{ name: 'Test', formula: '1w6' }], simpleDices: [] });
+        expect(s[2]).toEqual({ id: 'neu-1', name: 'Neu', functions: [{ type: 'dice', name: 'Test', formula: '1w6' }], simpleDices: [] });
         await expect(page.locator('.profile-name')).toHaveText(['Umbenannt', 'Bilbo', 'Neu']);
     });
 
@@ -815,7 +825,7 @@ test.describe('Export und Import', () => {
         await open(page);
         await importJson(page, JSON.stringify({ profiles: [null, { name: '' }, { id: 'm', name: 'Mix', attackFunctions: [{ name: 'x' }], simpleDices: [{ sides: -1 }, { sides: 4 }] }] }));
         await expect(page.locator('#toastText')).toHaveText('1 Profil(e) importiert.');
-        expect(await stored(page)).toEqual([{ id: 'm', name: 'Mix', attackFunctions: [], diceFunctions: [], simpleDices: [{ sides: 4 }] }]);
+        expect(await stored(page)).toEqual([{ id: 'm', name: 'Mix', functions: [], simpleDices: [{ sides: 4 }] }]);
     });
 
     test('HTML im Namen wird als Text angezeigt (kein Skript)', async ({ page }) => {
@@ -846,14 +856,14 @@ test.describe('Daten der Originalversion', () => {
         await expect(page.locator('.profile-name')).toHaveText(['Altes Profil', 'Uralt ohne Angriffe']);
         await openProfile(page, '1727000000000abc123xyz');
         await expect.poll(() => cards(page, 'simpleDices')).toEqual(['W6', 'W13']);
-        await roll(page, 'diceFunctions', 0, Array(8).fill(0));
+        await roll(page, 'functions', 1, Array(8).fill(0));
         await expect.poll(() => resultLines(page)).toEqual([{ label: null, total: '8', detail: '8w6 [1, 1, 1, 1, 1, 1, 1, 1]' }]);
         await closeResult(page);
     });
 
     test('Alte ungültige Formel (200w6) bleibt erhalten, Würfeln meldet Fehler', async ({ page }) => {
         await openProfile(page, '1727000000001def');
-        await page.click('[data-list=diceFunctions][data-index="0"]');
+        await page.click('[data-list=functions][data-index="0"]');
         await expect(page.locator('#toastText')).toHaveText(/Fehlerhafte Formel/);
         await expect(page.locator('#resultDialog')).toBeHidden();
         expect((await stored(page))[1].diceFunctions[0].formula).toBe('200w6');

@@ -78,15 +78,50 @@ describe('rollFormula', () => {
 describe('normalizeProfiles', () => {
     test('accepts the export file format and drops unknown fields', () => {
         const [profile] = normalizeProfiles({
-            profiles: [{ id: 'a', name: 'Gandalf', extra: 1, attackFunctions: [{ name: 'Stab', attack: '1w20', damage: '1w6', extra: 1 }] }]
+            profiles: [{ id: 'a', name: 'Gandalf', extra: 1, functions: [{ type: 'attack', name: 'Stab', attack: '1w20', damage: '1w6', extra: 1 }] }]
         });
         assert.deepEqual(profile, {
             id: 'a',
             name: 'Gandalf',
-            attackFunctions: [{ name: 'Stab', attack: '1w20', damage: '1w6' }],
-            diceFunctions: [],
+            functions: [{ type: 'attack', name: 'Stab', attack: '1w20', damage: '1w6' }],
             simpleDices: []
         });
+    });
+
+    test('keeps attack and dice functions mixed in their stored order', () => {
+        const [profile] = normalizeProfiles([{
+            id: 'a',
+            name: 'Gandalf',
+            functions: [
+                { type: 'dice', name: 'Feuerball', formula: '8w6' },
+                { type: 'attack', name: 'Stab', attack: '1w20', damage: '1w6' }
+            ]
+        }]);
+        assert.deepEqual(profile.functions.map(f => f.name), ['Feuerball', 'Stab']);
+    });
+
+    test('converts the separate lists of older versions, attacks first', () => {
+        const [profile] = normalizeProfiles([{
+            id: 'a',
+            name: 'Alt',
+            diceFunctions: [{ name: 'Feuerball', formula: '8w6' }],
+            attackFunctions: [{ name: 'Stab', attack: '1w20', damage: '1w6' }]
+        }]);
+        assert.deepEqual(profile.functions, [
+            { type: 'attack', name: 'Stab', attack: '1w20', damage: '1w6' },
+            { type: 'dice', name: 'Feuerball', formula: '8w6' }
+        ]);
+        assert.equal('attackFunctions' in profile, false);
+        assert.equal('diceFunctions' in profile, false);
+    });
+
+    test('drops functions of unknown type or with missing fields', () => {
+        const [profile] = normalizeProfiles([{
+            id: 'a',
+            name: 'Mix',
+            functions: [{ type: 'spell', name: 'X', formula: '1w6' }, { type: 'attack', name: 'Halb', attack: '1w20' }, null]
+        }]);
+        assert.deepEqual(profile.functions, []);
     });
 
     test('accepts the plain array stored in localStorage', () => {
@@ -101,7 +136,7 @@ describe('normalizeProfiles', () => {
 
     test('keeps invalid formulas so old data is never lost', () => {
         const [profile] = normalizeProfiles([{ id: 'a', name: 'Alt', diceFunctions: [{ name: 'Zu viel', formula: '200w6' }] }]);
-        assert.equal(profile.diceFunctions[0].formula, '200w6');
+        assert.equal(profile.functions[0].formula, '200w6');
     });
 
     test('creates an id when it is missing', () => {

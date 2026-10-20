@@ -82,9 +82,23 @@ export function rollFormula(formula, random = Math.random) {
 const asList = value => Array.isArray(value) ? value : [];
 const isText = value => typeof value === 'string' && value.trim() !== '';
 
+// A function is { type: 'attack', name, attack, damage } or { type: 'dice', name, formula }.
+// Attack and dice functions share one list so players can order them freely.
+function normalizeFunction(f) {
+    if (f?.type === 'attack' && isText(f.name) && isText(f.attack) && isText(f.damage)) {
+        return { type: 'attack', name: f.name, attack: f.attack, damage: f.damage };
+    }
+    if (f?.type === 'dice' && isText(f.name) && isText(f.formula)) {
+        return { type: 'dice', name: f.name, formula: f.formula };
+    }
+    return null;
+}
+
 // Cleans profiles from localStorage or an import file. Accepts a plain array
 // or an export file { profiles: [...] }. Returns null if nothing usable is found.
 // Formulas are kept as text even if invalid, so old data is never dropped silently.
+// Versions before export format 2 kept attackFunctions and diceFunctions in separate
+// lists; they are merged with the attacks first, the order those versions showed them.
 export function normalizeProfiles(data) {
     const list = Array.isArray(data) ? data : data?.profiles;
     if (!Array.isArray(list)) return null;
@@ -92,12 +106,13 @@ export function normalizeProfiles(data) {
     return list.filter(p => p && isText(p.name)).map(p => ({
         id: isText(p.id) ? p.id : crypto.randomUUID(),
         name: p.name,
-        attackFunctions: asList(p.attackFunctions)
-            .filter(f => f && isText(f.name) && isText(f.attack) && isText(f.damage))
-            .map(({ name, attack, damage }) => ({ name, attack, damage })),
-        diceFunctions: asList(p.diceFunctions)
-            .filter(f => f && isText(f.name) && isText(f.formula))
-            .map(({ name, formula }) => ({ name, formula })),
+        functions: (Array.isArray(p.functions)
+            ? p.functions
+            : [
+                ...asList(p.attackFunctions).map(f => ({ ...f, type: 'attack' })),
+                ...asList(p.diceFunctions).map(f => ({ ...f, type: 'dice' }))
+            ]
+        ).map(normalizeFunction).filter(Boolean),
         simpleDices: asList(p.simpleDices)
             .filter(d => d && Number.isInteger(d.sides) && d.sides >= 1)
             .map(({ sides }) => ({ sides }))

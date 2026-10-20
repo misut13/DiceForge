@@ -41,7 +41,10 @@ GitHub Pages: only the app files (`index.html`, `*.js` without tests, `styles.cs
   `{ view, profileId, form, index, result, depth }`; `render(state)` draws the whole UI from it. Never show a
   screen without going through `navigate()`/`goBack()`, otherwise the browser and Android back button break.
 - **Storage** lives in `localStorage` under `profiles` and `appSettings`. Loaded data and import files go through
-  `normalizeProfiles()`.
+  `normalizeProfiles()`. A profile is
+  `{ id, name, functions: [{ type: 'attack', name, attack, damage } | { type: 'dice', name, formula }], simpleDices: [{ sides }] }`.
+  Attack and dice functions share one list so they can be ordered freely; older data with separate
+  `attackFunctions` / `diceFunctions` lists is converted on load (attacks first).
 - **Rendering** builds DOM nodes with the `el()` helper and `textContent`.
 - **Cache busting:** every local script, stylesheet and module import is referenced with `?v=dev`
   (`assets.test.js` enforces it). GitHub Pages caches files for 10 minutes; without the version stamp a new
@@ -91,8 +94,8 @@ Test quality:
 - `localStorage` keys and the profile shape stay backward compatible. Data from the `original` tag must keep
   loading (covered by tests). A format change needs a migration in `normalizeProfiles()` plus a test.
 - Never drop data silently: invalid stored formulas are kept and reported on roll.
-- The export format is `{ app: 'DiceForge', version, profiles }`. Bump `version` on format changes and keep
-  importing older versions and the plain array.
+- The export format is `{ app: 'DiceForge', version, profiles }`, currently version 2 (one `functions` list).
+  Bump `version` on format changes and keep importing older versions and the plain array.
 - Destructive actions offer undo (toast), no confirm dialogs.
 
 **Security**
