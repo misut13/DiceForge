@@ -254,6 +254,7 @@
 
         // Screen Management
         function showScreen(screenId) {
+            closeSettings();
             document.querySelectorAll('.screen').forEach(screen => {
                 screen.classList.remove('active');
             });
@@ -334,7 +335,6 @@
         }
 
         function showAddAttackFunction(skipHistory = false, profileId = null) {
-            closeSettings();
             setDeleteModeState(false);
             if (profileId) {
                 const profile = profiles.find(p => p.id === profileId);
@@ -364,7 +364,6 @@
         }
 
         function showAddDiceFunction(skipHistory = false, profileId = null) {
-            closeSettings();
             setDeleteModeState(false);
             if (profileId) {
                 const profile = profiles.find(p => p.id === profileId);
@@ -393,7 +392,6 @@
         }
 
         function showAddSimpleDice(skipHistory = false, profileId = null) {
-            closeSettings();
             setDeleteModeState(false);
             if (profileId) {
                 const profile = profiles.find(p => p.id === profileId);
@@ -817,6 +815,10 @@
                 if (diceMatch) {
                     const count = parseInt(diceMatch[1] || '1', 10);
                     const sides = parseInt(diceMatch[2], 10);
+                    // Huge counts like 99999999w6 would freeze the browser
+                    if (count < 1 || count > 100 || sides < 1) {
+                        return null;
+                    }
                     terms.push({ type: 'dice', count, sides, sign });
                 } else if (/^\d+$/.test(token)) {
                     terms.push({ type: 'number', value: sign * parseInt(token, 10) });
@@ -1007,8 +1009,8 @@
             });
             document.getElementById('customDiceSides').addEventListener('input', (e) => {
                 let value = e.target.value.replace(/[^0-9]/g, '');
-                if (value.length > 6) {
-                    value = value.slice(0, 6);
+                if (value.length > 5) {
+                    value = value.slice(0, 5);
                 }
                 e.target.value = value;
             });
