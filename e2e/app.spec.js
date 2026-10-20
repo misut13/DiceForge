@@ -260,15 +260,12 @@ test.describe('Würfeln', () => {
         await closeResult(page);
     });
 
-    test('Angriff würfeln: Summen stimmen, natürliche 1, Verlauf, schliessen per Escape', async ({ page }) => {
-        await roll(page, 'simpleDices', 6, [0.999]);
-        await closeResult(page);
+    test('Angriff würfeln: Summen stimmen, natürliche 1, schliessen per Escape', async ({ page }) => {
         await roll(page, 'attackFunctions', 0, [0, 0.5, 0.5]);
         const text = page.locator('#resultText');
         await expect(text).toHaveText(/Angriff: 1w20 \[1\] \+5 = 6/);
         await expect(text).toHaveText(/Natürliche 1/);
         await expect(text).toHaveText(/Schaden: 2w6 \[4, 4\] \+3 = 11/);
-        await expect(page.locator('#rollHistory li')).toHaveText(['W20: 20']);
         await page.keyboard.press('Escape');
         await expect(page.locator('#resultDialog')).toBeHidden();
         await expect.poll(() => resultState(page)).toBeUndefined();
@@ -289,15 +286,12 @@ test.describe('Würfeln', () => {
         await expect(page.locator('#profileScreen')).toBeVisible();
     });
 
-    test('Verlauf zeigt höchstens 5 frühere Würfe', async ({ page }) => {
-        for (let i = 0; i < 7; i++) {
-            await roll(page, 'simpleDices', 0, [0]);
-            await expect(page.locator('#resultDialog')).toBeVisible();
-            await closeResult(page);
-        }
-        await roll(page, 'simpleDices', 0, [0]);
-        await expect(page.locator('#resultDialog')).toBeVisible();
-        await expect(page.locator('#rollHistory li')).toHaveCount(5);
+    test('Ergebnis zeigt nur den aktuellen Wurf, keine früheren', async ({ page }) => {
+        await roll(page, 'attackFunctions', 0, [0, 0.5, 0.5]);
+        await closeResult(page);
+        await roll(page, 'diceFunctions', 0, [0, 0.5, 0.999, 0.5]);
+        await expect(page.locator('#resultText')).toContainText('Attribut');
+        await expect(page.locator('#resultDialog')).not.toContainText('Schwert');
         await closeResult(page);
     });
 

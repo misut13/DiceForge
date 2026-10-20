@@ -6,7 +6,6 @@ const SOUNDS = {
     multi: [1, 2, 3, 4, 5, 6].map(n => `sounds/multidice${n}.m4a`)
 };
 const ANIMATION_MS = 2000;
-const PREVIOUS_ROLLS = 5;
 const TOAST_MS = 6000;
 
 // One form per item list of a profile
@@ -21,7 +20,7 @@ const $ = id => document.getElementById(id);
 let profiles = [];
 let settings = { animationEnabled: true };
 let mode = null; // null | 'edit' | 'delete'
-let rolls = []; // rolls of the open profile, newest first
+let lastRoll = null;
 let animationBlob = null;
 let animationUrl = null;
 let animationTimer = null;
@@ -108,7 +107,7 @@ function render(state) {
     }
 
     const dialog = $('resultDialog');
-    if (state.view === 'profile' && state.result && rolls.length) {
+    if (state.view === 'profile' && state.result && lastRoll) {
         renderResult();
         if (!dialog.open) dialog.showModal();
     } else if (dialog.open) {
@@ -186,10 +185,9 @@ function renderProfile(profile) {
 }
 
 function renderResult() {
-    const [roll, ...previous] = rolls;
     $('resultText').replaceChildren(
-        el('div', 'roll-name', roll.name),
-        ...roll.lines.map(line => {
+        el('div', 'roll-name', lastRoll.name),
+        ...lastRoll.lines.map(line => {
             const row = el('div', 'roll-result');
             if (line.label) row.append(el('strong', '', `${line.label}:`), ' ');
             row.append(`${line.detail} = `, el('strong', '', String(line.total)));
@@ -198,8 +196,6 @@ function renderResult() {
             return row;
         })
     );
-    $('rollHistory').replaceChildren(...previous.map(r => el('li', '', `${r.name}: ${r.lines.map(l => l.total).join(' / ')}`)));
-    $('rollHistory').hidden = previous.length === 0;
 }
 
 // ---------- Profiles ----------
@@ -218,7 +214,7 @@ function createProfile(event) {
 }
 
 function openProfile(id) {
-    rolls = [];
+    lastRoll = null;
     navigate({ view: 'profile', profileId: id });
 }
 
@@ -338,10 +334,10 @@ function roll(item, list) {
         return;
     }
 
-    rolls = [{
+    lastRoll = {
         name: item.name ?? `W${item.sides}`,
         lines: results.map((result, i) => ({ label: formulas[i][0], ...result }))
-    }, ...rolls].slice(0, PREVIOUS_ROLLS + 1);
+    };
 
     playRandomSound(list === 'simpleDices' ? SOUNDS.single : SOUNDS.multi);
     navigate({ ...history.state, result: true }, !!history.state.result);
