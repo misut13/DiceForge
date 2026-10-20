@@ -2,8 +2,8 @@
 
 export const MAX_DICE = 100;
 
-// 3w6, 1d20, w8, 2w20h (keep highest), 4w6kh3, 2w20n / 2w20kl (keep lowest)
-const DICE_TERM = /^(\d*)[wd](\d+)(?:(kh|kl|h|n|l)(\d*))?$/i;
+// 3w6, 1d20, w8
+const DICE_TERM = /^(\d*)[wd](\d+)$/i;
 
 export function parseFormula(formula) {
     const tokens = String(formula ?? '').replace(/\s+/g, '').replace(/-/g, '+-').split('+').filter(Boolean);
@@ -18,19 +18,9 @@ export function parseFormula(formula) {
         if (dice) {
             const count = Number(dice[1] || 1);
             const sides = Number(dice[2]);
-            const keepMode = (dice[3] || '').toLowerCase();
-            const keep = keepMode ? Number(dice[4] || 1) : count;
-            // Huge counts like 99999999w6 would freeze the browser; 0w6 fails on keep < 1
-            if (count > MAX_DICE || sides < 1 || keep < 1 || keep > count) return null;
-            terms.push({
-                type: 'dice',
-                sign,
-                count,
-                sides,
-                keep,
-                keepLowest: ['kl', 'n', 'l'].includes(keepMode),
-                notation: `${count}w${sides}${keepMode ? keepMode + keep : ''}`
-            });
+            // Huge counts like 99999999w6 would freeze the browser
+            if (count < 1 || count > MAX_DICE || sides < 1) return null;
+            terms.push({ type: 'dice', sign, count, sides });
         } else if (/^\d+$/.test(token)) {
             terms.push({ type: 'number', value: sign * Number(token) });
         } else {
@@ -45,7 +35,7 @@ export function rollDie(sides, random = Math.random) {
 }
 
 // Returns { total, detail, natural } or null for an invalid formula.
-// natural is the face of a single kept w20, used to highlight a natural 20 or 1.
+// natural is the face of a single w20, used to highlight a natural 20 or 1.
 export function rollFormula(formula, random = Math.random) {
     const terms = parseFormula(formula);
     if (!terms) return null;
@@ -64,15 +54,11 @@ export function rollFormula(formula, random = Math.random) {
         }
 
         const rolls = Array.from({ length: term.count }, () => rollDie(term.sides, random));
-        const byValue = rolls.map((_, i) => i).sort((a, b) => term.keepLowest ? rolls[a] - rolls[b] : rolls[b] - rolls[a]);
-        const kept = new Set(byValue.slice(0, term.keep));
-        const sum = rolls.reduce((acc, value, i) => kept.has(i) ? acc + value : acc, 0);
-        total += term.sign * sum;
-        const shown = rolls.map((value, i) => kept.has(i) ? value : `(${value})`).join(', ');
-        parts.push(`${sign}${term.notation} [${shown}]`);
+        total += term.sign * rolls.reduce((acc, value) => acc + value, 0);
+        parts.push(`${sign}${term.count}w${term.sides} [${rolls.join(', ')}]`);
 
-        if (term.sides === 20 && term.keep === 1) {
-            natural = rolls[byValue[0]];
+        if (term.sides === 20 && term.count === 1) {
+            natural = rolls[0];
         }
     }
 

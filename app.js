@@ -331,7 +331,7 @@ function toggleCustomSides(form) {
 // Native validation plus the formula check, shown as the browser's validation bubble
 function validate(form) {
     form.querySelectorAll('[data-formula]').forEach(input => {
-        input.setCustomValidity(parseFormula(input.value) ? '' : 'Ungültige Formel. Beispiele: 3w6+3, 3w6+3+2w6-2, 2w20h+5');
+        input.setCustomValidity(parseFormula(input.value) ? '' : 'Ungültige Formel. Beispiele: 3w6+3, 1w20+5, 3w6+3+2w6-2');
     });
     return form.reportValidity();
 }

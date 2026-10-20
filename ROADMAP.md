@@ -28,6 +28,9 @@ geschätztem Nutzen. Umsetzung wie immer test-first nach `CLAUDE.md`.
 
 ## Abhängig vom Spielsystem
 
+- [ ] **Vorteil und Nachteil (D&D 5e).** Zwei W20 würfeln, der höhere bzw. niedrigere zählt. Kann bei jedem
+  Wurf vorkommen, gehört also nicht in die Formel (sonst bräuchte jede Funktion drei Varianten). Umsetzung
+  offen. Eine frühere Formel-Schreibweise (`2w20h`, `4w6h3`) wurde deshalb wieder entfernt.
 - [ ] **Kritischer Schaden.** Bei natürlicher 20 im Angriff die Schadenswürfel verdoppeln (D&D), als Option
   pro Angriff.
 - [ ] **DSA-Probe.** 3W20 gegen drei Eigenschaftswerte samt Talentwert, Auswertung "gelungen,

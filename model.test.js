@@ -13,9 +13,9 @@ describe('parseFormula', () => {
         }
     });
 
-    test('accepts keep highest and keep lowest notation', () => {
-        for (const formula of ['2w20h+5', '4w6kh3', '2W20n', '2w20kl1', '2w20l']) {
-            assert.ok(parseFormula(formula), formula);
+    test('rejects keep highest and keep lowest notation', () => {
+        for (const formula of ['2w20h+5', '4w6kh3', '2W20n', '2w20kl1', '2w20l', '4w6h3']) {
+            assert.equal(parseFormula(formula), null, formula);
         }
     });
 
@@ -39,10 +39,6 @@ describe('parseFormula', () => {
         assert.equal(parseFormula('1w0'), null);
     });
 
-    test('rejects keeping more dice than rolled or none', () => {
-        assert.equal(parseFormula('2w20h3'), null);
-        assert.equal(parseFormula('2w20h0'), null);
-    });
 });
 
 describe('rollFormula', () => {
@@ -54,19 +50,15 @@ describe('rollFormula', () => {
         assert.deepEqual(rollFormula('-1w4-2', sequence([0.99])), { total: -6, detail: '-1w4 [4] -2', natural: null });
     });
 
-    test('keeps the highest die for advantage and shows dropped dice in brackets', () => {
-        assert.deepEqual(rollFormula('2w20h+5', sequence([0.99, 0])), { total: 25, detail: '2w20h1 [20, (1)] +5', natural: 20 });
+    test('reports a natural 20 of a single w20', () => {
+        assert.deepEqual(rollFormula('1w20+5', sequence([0.99])), { total: 25, detail: '1w20 [20] +5', natural: 20 });
     });
 
-    test('keeps the lowest die for disadvantage', () => {
-        assert.deepEqual(rollFormula('2w20n', sequence([0.99, 0])), { total: 1, detail: '2w20n1 [(20), 1]', natural: 1 });
+    test('reports a natural 1 of a single w20', () => {
+        assert.equal(rollFormula('w20', sequence([0])).natural, 1);
     });
 
-    test('keeps the best three of four', () => {
-        assert.equal(rollFormula('4w6kh3', sequence([0, 0.5, 0.99, 0.5])).total, 6 + 4 + 4);
-    });
-
-    test('reports no natural value when several w20 are kept', () => {
+    test('reports no natural value when several w20 are rolled', () => {
         assert.equal(rollFormula('2w20', sequence([0.99, 0.99])).natural, null);
     });
 

@@ -13,7 +13,7 @@ const gandalf = (overrides = {}) => ({
     name: 'Würfelkönig Gandalf',
     functions: [
         { type: 'attack', name: 'Schwert', attack: '1w20+5', damage: '2w6+3' },
-        { type: 'dice', name: 'Attribut', formula: '4w6h3' }
+        { type: 'dice', name: 'Attribut', formula: '4w6' }
     ],
     simpleDices: dice(...STANDARD),
     ...overrides
@@ -210,7 +210,7 @@ test.describe('Hinzufügen', () => {
         await expect.poll(() => cards(page, 'functions')).toEqual(['Schwert A: 1w20+5 S: 2w6+3']);
     });
 
-    test('Würfelfunktion: 101w6 abgelehnt, 4w6h3 gespeichert', async ({ page }) => {
+    test('Würfelfunktion: 101w6 und 4w6h3 abgelehnt, 4w6 gespeichert', async ({ page }) => {
         await open(page, { profiles: [empty] });
         await openProfile(page);
         await openSettings(page);
@@ -221,8 +221,11 @@ test.describe('Hinzufügen', () => {
         await expect.poll(() => page.locator('#diceForm [name=formula]').evaluate(i => i.validationMessage)).toMatch(/^Ungültige Formel/);
         await page.fill('#diceForm [name=formula]', '4w6h3');
         await page.click('#diceForm [type=submit]');
+        await expect.poll(() => page.locator('#diceForm [name=formula]').evaluate(i => i.validationMessage)).toMatch(/^Ungültige Formel/);
+        await page.fill('#diceForm [name=formula]', '4w6');
+        await page.click('#diceForm [type=submit]');
         await expect(page.locator('#profileScreen')).toBeVisible();
-        await expect.poll(() => cards(page, 'functions')).toEqual(['Attribut 4w6h3']);
+        await expect.poll(() => cards(page, 'functions')).toEqual(['Attribut 4w6']);
     });
 
     test('Eigener Würfel: Feld nur bei "Individuell", 0 und Buchstaben abgelehnt, W7 gespeichert', async ({ page }) => {
@@ -288,9 +291,9 @@ test.describe('Würfeln', () => {
         await expect.poll(() => resultState(page)).toBeUndefined();
     });
 
-    test('4w6h3 würfeln: bester 3 von 4, schliessen per Klick daneben', async ({ page }) => {
+    test('4w6 würfeln: Summe aller Würfel, schliessen per Klick daneben', async ({ page }) => {
         await roll(page, 'functions', 1, [0, 0.5, 0.999, 0.5]);
-        await expect.poll(() => resultLines(page)).toEqual([{ label: null, total: '14', detail: '4w6h3 [(1), 4, 6, 4]' }]);
+        await expect.poll(() => resultLines(page)).toEqual([{ label: null, total: '15', detail: '4w6 [1, 4, 6, 4]' }]);
         await page.mouse.click(3, 3);
         await expect(page.locator('#resultDialog')).toBeHidden();
     });
@@ -350,7 +353,7 @@ test.describe('Bearbeiten', () => {
         await page.fill('#attackForm [name=damage]', '1w8');
         await page.click('#attackForm [type=submit]');
         await expect(page.locator('#profileScreen')).toBeVisible();
-        await expect.poll(() => cards(page, 'functions')).toEqual(['Schwert A: 1w20+5 S: 1w8', 'Attribut 4w6h3']);
+        await expect.poll(() => cards(page, 'functions')).toEqual(['Schwert A: 1w20+5 S: 1w8', 'Attribut 4w6']);
     });
 
     test('Hinzugefügtes und Bearbeitetes überlebt Neuladen', async ({ page }) => {
@@ -369,7 +372,7 @@ test.describe('Bearbeiten', () => {
         await page.click('#attackForm [type=submit]');
         await expect(page.locator('#profileScreen')).toBeVisible();
         await page.reload();
-        await expect.poll(() => cards(page, 'functions')).toEqual(['Schwert A: 1w20+5 S: 1w8', 'Attribut 4w6h3', 'Initiative 1w20+2']);
+        await expect.poll(() => cards(page, 'functions')).toEqual(['Schwert A: 1w20+5 S: 1w8', 'Attribut 4w6', 'Initiative 1w20+2']);
     });
 
     test('Bearbeiten: W7 auf Standard W12, W3 auf eigenen W5', async ({ page }) => {
@@ -405,7 +408,7 @@ test.describe('Bearbeiten', () => {
         await expect(page.locator('#diceForm')).toBeVisible();
         await page.reload();
         await expect(page.locator('#diceForm')).toBeVisible();
-        await expect(page.locator('#diceForm [name=formula]')).toHaveValue('4w6h3');
+        await expect(page.locator('#diceForm [name=formula]')).toHaveValue('4w6');
         await page.click('#diceForm [data-back]');
         await expect(page.locator('#profileScreen')).toBeVisible();
     });
@@ -726,9 +729,9 @@ test.describe('Umbenennen und Verschieben', () => {
         await openProfile(page);
         await editMode(page);
         await dragTo(page, '[data-list=functions][data-index="1"]', '[data-list=functions][data-index="0"]');
-        await expect.poll(() => cards(page, 'functions')).toEqual(['Attribut 4w6h3', 'Schwert A: 1w20+5 S: 2w6+3']);
+        await expect.poll(() => cards(page, 'functions')).toEqual(['Attribut 4w6', 'Schwert A: 1w20+5 S: 2w6+3']);
         await page.reload();
-        await expect.poll(() => cards(page, 'functions')).toEqual(['Attribut 4w6h3', 'Schwert A: 1w20+5 S: 2w6+3']);
+        await expect.poll(() => cards(page, 'functions')).toEqual(['Attribut 4w6', 'Schwert A: 1w20+5 S: 2w6+3']);
     });
 
     test('Ziehen auf eine andere Art von Eintrag ändert nichts', async ({ page }) => {
